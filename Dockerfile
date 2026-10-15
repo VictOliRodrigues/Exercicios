@@ -1,7 +1,9 @@
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# --include=dev: o Coolify pode repassar NODE_ENV=production para o build, e aí o npm
+# pularia as devDependencies (tsc incluído).
+RUN npm ci --include=dev --no-audit --no-fund
 COPY . .
 RUN npm run build
 
