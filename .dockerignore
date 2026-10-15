@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+storage
+tests
+.env
+.env.*
+.git
+.vscode
+*.log
+PLANO.md
+README.md

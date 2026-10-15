@@ -1,0 +1,12 @@
+<%- include('../partials/head', { layout: 'centered' }) %>
+<section class="card narrow-card error-card">
+  <p class="error-code" aria-hidden="true">404</p>
+  <h1>Página não encontrada</h1>
+  <p class="muted">O endereço pode estar errado, ou a página não existe mais.</p>
+  <% if (locals.currentUser) { %>
+    <a class="button button-primary" href="/">Voltar ao painel</a>
+  <% } else { %>
+    <a class="button button-primary" href="/login">Ir para o login</a>
+  <% } %>
+</section>
+<%- include('../partials/foot') %>

@@ -1,0 +1,6 @@
+dist
+coverage
+storage
+src/db/migrations
+*.md
+*.ejs

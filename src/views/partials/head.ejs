@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= locals.title ? title + ' · ' + appName : appName %></title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<% if (locals.currentUser) { %>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">
+        <%- include('logo') %>
+        <span><%= appName %></span>
+      </a>
+      <% if (!currentUser.mustChangePassword) { %>
+        <nav class="nav" aria-label="Principal">
+          <% if (currentUser.role === 'admin') { %>
+            <a href="/admin/usuarios">Usuários</a>
+          <% } else { %>
+            <a href="/">Painel</a>
+          <% } %>
+        </nav>
+      <% } %>
+      <div class="user-menu">
+        <span class="user-name"><%= currentUser.name %></span>
+        <% if (!currentUser.mustChangePassword) { %>
+          <a href="/alterar-senha">Alterar senha</a>
+        <% } %>
+        <form method="post" action="/logout" class="inline-form">
+          <input type="hidden" name="_csrf" value="<%= locals.csrfToken ? csrfToken() : '' %>">
+          <button type="submit" class="link-button">Sair</button>
+        </form>
+      </div>
+    </div>
+  </header>
+<% } %>
+<main class="<%= locals.layout === 'centered' ? 'centered' : 'page' %>">
+<% (locals.flash || []).forEach(function (item) { %>
+  <div class="alert alert-<%= item.type %>" role="status"><%= item.message %></div>
+<% }) %>

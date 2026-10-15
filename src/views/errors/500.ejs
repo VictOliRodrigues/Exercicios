@@ -1,0 +1,9 @@
+<%- include('../partials/head', { layout: 'centered' }) %>
+<section class="card narrow-card error-card">
+  <p class="error-code" aria-hidden="true">Ops</p>
+  <h1>Algo deu errado</h1>
+  <p class="muted">Tente novamente em instantes. Se o problema continuar, informe este código ao administrador:</p>
+  <p><code class="reference"><%= reference %></code></p>
+  <a class="button button-primary" href="/">Ir para o início</a>
+</section>
+<%- include('../partials/foot') %>

@@ -1,0 +1,42 @@
+# Ambiente local. O MySQL sobe sempre; o app só com o perfil "app" (para testar a imagem Docker):
+#   docker compose up -d mysql
+#   docker compose --profile app up --build
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?defina MYSQL_ROOT_PASSWORD no .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-simulados}
+      MYSQL_USER: ${MYSQL_USER:-simulados_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?defina MYSQL_PASSWORD no .env}
+    ports:
+      - '127.0.0.1:${MYSQL_HOST_PORT:-3307}:3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '--silent']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  app:
+    profiles: ['app']
+    build: .
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      COOKIE_SECURE: 'false'
+      STORAGE_PATH: /app/storage
+      DATABASE_URL: mysql://${MYSQL_USER:-simulados_app}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-simulados}
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - app-storage:/app/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
+  app-storage:

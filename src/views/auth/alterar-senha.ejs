@@ -1,0 +1,45 @@
+<%- include('../partials/head', { layout: 'centered' }) %>
+<section class="card narrow-card">
+  <h1><%= forced ? 'Defina uma nova senha' : 'Alterar senha' %></h1>
+
+  <% if (forced) { %>
+    <div class="alert alert-info" role="status">
+      Por segurança, troque a senha que você recebeu antes de continuar.
+    </div>
+  <% } %>
+
+  <% if (errors.length) { %>
+    <div class="alert alert-error" role="alert">
+      <% if (errors.length === 1) { %>
+        <%= errors[0] %>
+      <% } else { %>
+        <ul>
+          <% errors.forEach(function (message) { %><li><%= message %></li><% }) %>
+        </ul>
+      <% } %>
+    </div>
+  <% } %>
+
+  <form method="post" action="/alterar-senha" class="form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+    <label class="field">
+      <span>Senha atual</span>
+      <input type="password" name="senhaAtual" autocomplete="current-password" maxlength="200" required autofocus>
+    </label>
+    <label class="field">
+      <span>Nova senha</span>
+      <input type="password" name="novaSenha" autocomplete="new-password" minlength="10" maxlength="200" required>
+      <small class="hint">Pelo menos 10 caracteres.</small>
+    </label>
+    <label class="field">
+      <span>Confirme a nova senha</span>
+      <input type="password" name="confirmacao" autocomplete="new-password" minlength="10" maxlength="200" required>
+    </label>
+    <button type="submit" class="button button-primary button-block">Salvar nova senha</button>
+  </form>
+
+  <% if (!forced) { %>
+    <p class="card-footer"><a href="/">Cancelar</a></p>
+  <% } %>
+</section>
+<%- include('../partials/foot') %>

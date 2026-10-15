@@ -1,0 +1,114 @@
+import { randomBytes } from 'node:crypto';
+import path from 'node:path';
+import { sql } from 'drizzle-orm';
+import express, { type ErrorRequestHandler } from 'express';
+import session from 'express-session';
+import helmet from 'helmet';
+import { isCookieSecure, type Env } from './config/env.js';
+import type { CryptoService } from './crypto/index.js';
+import type { FileStore } from './crypto/file-store.js';
+import type { Database } from './db/client.js';
+import { CSRF_ERROR_CODE, csrfSynchronisedProtection, generateToken } from './http/csrf.js';
+import { exposeFlash, loadCurrentUser, renderNotFound, SESSION_COOKIE } from './http/session.js';
+import './http/types.js';
+import { adminUsersRoutes } from './modules/admin-users/admin-users.routes.js';
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { homeRoutes } from './modules/home/home.routes.js';
+
+export interface AppDeps {
+  env: Env;
+  db: Database;
+  crypto: CryptoService;
+  fileStore: FileStore;
+  sessionStore: session.Store;
+}
+
+export function createApp(deps: AppDeps) {
+  const { env, db, crypto } = deps;
+  const production = env.NODE_ENV === 'production';
+  const app = express();
+
+  app.set('trust proxy', env.TRUST_PROXY);
+  app.disable('x-powered-by');
+  app.set('view engine', 'ejs');
+  app.set('views', path.join(import.meta.dirname, 'views'));
+  app.locals.appName = 'Simulados';
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          styleSrc: ["'self'"],
+          fontSrc: ["'self'"],
+          upgradeInsecureRequests: production ? [] : null,
+        },
+      },
+    }),
+  );
+  app.use(
+    express.static(path.join(import.meta.dirname, 'public'), {
+      index: false,
+      maxAge: production ? '1h' : 0,
+    }),
+  );
+
+  app.get('/health', async (_req, res) => {
+    try {
+      await db.execute(sql`select 1`);
+      res.json({ status: 'ok' });
+    } catch {
+      res.status(503).json({ status: 'indisponivel' });
+    }
+  });
+
+  // Páginas com dados do usuário nunca ficam em cache (nem no botão Voltar depois de sair).
+  app.use((_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+  app.use(express.urlencoded({ extended: false, limit: '50kb' }));
+  app.use(express.json({ limit: '50kb' }));
+  app.use(
+    session({
+      name: SESSION_COOKIE,
+      secret: env.SESSION_SECRET,
+      store: deps.sessionStore,
+      resave: false,
+      saveUninitialized: false,
+      rolling: true,
+      cookie: {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: isCookieSecure(env),
+        maxAge: env.SESSION_IDLE_HOURS * 60 * 60_000,
+      },
+    }),
+  );
+  app.use(loadCurrentUser(db, crypto));
+  app.use((req, res, next) => {
+    res.locals.csrfToken = () => generateToken(req);
+    next();
+  });
+  app.use(csrfSynchronisedProtection);
+  app.use(exposeFlash);
+
+  app.use(homeRoutes());
+  app.use(authRoutes(deps));
+  app.use('/admin', adminUsersRoutes());
+
+  app.use(renderNotFound);
+
+  const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+    if (error?.code === CSRF_ERROR_CODE) {
+      return res.status(403).render('errors/sessao-expirada', { title: 'Sessão expirada' });
+    }
+    const reference = randomBytes(4).toString('hex').toUpperCase();
+    console.error(`[erro ${reference}]`, error);
+    if (res.headersSent) return;
+    const status = error?.status >= 400 && error?.status < 500 ? error.status : 500;
+    res.status(status).render('errors/500', { title: 'Algo deu errado', reference });
+  };
+  app.use(errorHandler);
+
+  return app;
+}

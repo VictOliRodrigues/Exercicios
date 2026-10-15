@@ -1,0 +1,31 @@
+<%- include('../partials/head', { layout: 'centered' }) %>
+<section class="card narrow-card">
+  <h1>Esqueci minha senha</h1>
+
+  <% if (sent) { %>
+    <div class="alert alert-success" role="status">
+      Pedido registrado. Se o e-mail estiver correto, o administrador vai redefinir sua senha e enviar a nova para você.
+    </div>
+    <p class="card-footer"><a href="/login">Voltar ao login</a></p>
+  <% } else { %>
+    <p class="muted">
+      Informe o e-mail da sua conta. O administrador vai receber o pedido, redefinir sua senha e enviar a nova para você.
+    </p>
+
+    <% if (error) { %>
+      <div class="alert alert-error" role="alert"><%= error %></div>
+    <% } %>
+
+    <form method="post" action="/esqueci-senha" class="form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <label class="field">
+        <span>E-mail</span>
+        <input type="email" name="email" value="<%= email %>" autocomplete="username" maxlength="254" required autofocus>
+      </label>
+      <button type="submit" class="button button-primary button-block">Enviar pedido</button>
+    </form>
+
+    <p class="card-footer"><a href="/login">Voltar ao login</a></p>
+  <% } %>
+</section>
+<%- include('../partials/foot') %>
