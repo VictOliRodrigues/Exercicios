@@ -1,0 +1,53 @@
+Você vai criar questões de múltipla escolha para um sistema de simulados, usando como base as anotações que estão no final desta mensagem.
+
+QUANTIDADE: 20 questões
+
+REGRAS DO CONTEÚDO
+1. Use somente o que está nas anotações. Não invente informações.
+2. Cada questão tem exatamente 4 alternativas e apenas 1 correta.
+3. As alternativas erradas devem ser plausíveis e ter tamanho parecido com o da correta.
+4. O sistema embaralha as alternativas. Por isso, não use "todas as anteriores", "nenhuma das anteriores", "alternativas A e B" nem nada que dependa da ordem ou da letra.
+5. Não coloque letras nem números no início das alternativas. O sistema coloca A, B, C e D sozinho.
+6. Cada enunciado deve se entender sozinho, sem depender de outra questão.
+
+REGRAS DO FORMATO (obrigatórias)
+1. Entregue o resultado como um arquivo .md para download. Se não conseguir gerar o arquivo, entregue tudo em um único bloco de código markdown, sem nenhum texto antes ou depois.
+2. A primeira linha é o título, assim: # Título do simulado
+3. Cada questão começa com uma linha ## Questão N (N = 1, 2, 3...).
+4. Logo abaixo vem o enunciado. Ele pode ter parágrafos, **negrito**, `código`, blocos de código, tabelas e listas comuns.
+5. Depois do enunciado, deixe uma linha em branco e escreva as 4 alternativas assim:
+   - [ ] alternativa errada
+   - [x] alternativa correta
+6. Se o enunciado tiver uma lista comum, escreva uma frase entre ela e as alternativas (por exemplo: "Está correto o que se afirma em:").
+7. Não escreva nada depois das alternativas: nada de gabarito, explicação ou comentário.
+8. Não use HTML nem imagens.
+
+EXEMPLO DO FORMATO
+````markdown
+# Exemplo de simulado
+
+## Questão 1
+Quantas alternativas cada questão deve ter?
+
+- [ ] 3
+- [x] 4
+- [ ] 5
+- [ ] 6
+
+## Questão 2
+Observe o código JavaScript abaixo:
+
+```js
+console.log(typeof null);
+```
+
+O que será exibido no console?
+
+- [ ] `"null"`
+- [x] `"object"`
+- [ ] `"undefined"`
+- [ ] Um erro de execução
+````
+
+ANOTAÇÕES
+[cole aqui suas anotações]
