@@ -505,7 +505,7 @@ No login e no "Esqueci minha senha", o servidor calcula o HMAC do que foi digita
 - [ ] Upload: até 1 MB, só `.md`, só UTF-8 e nunca usar o nome original no disco. O volume fica fora da pasta pública.
 - [ ] O gabarito **nunca** vai para o navegador durante a prova. A correção e o tempo limite são validados no servidor.
 - [ ] O usuário MySQL da aplicação não é root e só tem acesso ao banco do app.
-- [ ] O container roda como usuário não-root.
+- [ ] O app roda como usuário não-root. O entrypoint começa como root só para ajustar o dono do volume (que o Coolify monta como root) e passa para o usuário `node`.
 - [ ] `npm audit` antes de cada deploy e versões exatas no `package.json`.
 
 ---

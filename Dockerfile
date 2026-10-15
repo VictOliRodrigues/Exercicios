@@ -17,9 +17,11 @@ RUN apt-get update \
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY --from=build /app/dist ./dist
+COPY docker-entrypoint.sh ./
 RUN mkdir -p /app/storage && chown -R node:node /app/storage
-USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD curl -fsS "http://127.0.0.1:${PORT:-3000}/health" || exit 1
-CMD ["sh", "-c", "node dist/scripts/migrate.js && node dist/scripts/seed-admin.js && node dist/src/server.js"]
+# O entrypoint começa como root só para ajustar o dono do volume e roda o app como node.
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
+CMD ["sh", "-c", "node dist/scripts/migrate.js && node dist/scripts/seed-admin.js && exec node dist/src/server.js"]
