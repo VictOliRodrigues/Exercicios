@@ -1,26 +1,22 @@
-Você vai criar questões de múltipla escolha para um sistema de simulados, usando como base as anotações que estão no final desta mensagem.
+Quando eu pedir questões de múltipla escolha nesta conversa, entregue-as no formato descrito abaixo. O arquivo é lido por um programa: qualquer desvio faz a importação falhar.
 
-QUANTIDADE: 20 questões
+COMO ENTREGAR
+1. Entregue um arquivo .md para download. Se não conseguir gerar o arquivo, entregue tudo em um único bloco de código markdown, sem nenhum texto antes ou depois.
+2. Se precisar dividir em mais de um arquivo, cada arquivo precisa seguir este formato inteiro, com o seu próprio título.
 
-REGRAS DO CONTEÚDO
-1. Use somente o que está nas anotações. Não invente informações.
-2. Cada questão tem exatamente 4 alternativas e apenas 1 correta.
-3. As alternativas erradas devem ser plausíveis e ter tamanho parecido com o da correta.
-4. O sistema embaralha as alternativas. Por isso, não use "todas as anteriores", "nenhuma das anteriores", "alternativas A e B" nem nada que dependa da ordem ou da letra.
-5. Não coloque letras nem números no início das alternativas. O sistema coloca A, B, C e D sozinho.
-6. Cada enunciado deve se entender sozinho, sem depender de outra questão.
-
-REGRAS DO FORMATO (obrigatórias)
-1. Entregue o resultado como um arquivo .md para download. Se não conseguir gerar o arquivo, entregue tudo em um único bloco de código markdown, sem nenhum texto antes ou depois.
-2. A primeira linha é o título, assim: # Título do simulado
-3. Cada questão começa com uma linha ## Questão N (N = 1, 2, 3...).
-4. Logo abaixo vem o enunciado. Ele pode ter parágrafos, **negrito**, `código`, blocos de código, tabelas e listas comuns.
-5. Depois do enunciado, deixe uma linha em branco e escreva as 4 alternativas assim:
+ESTRUTURA DO ARQUIVO
+1. A primeira linha é o título, assim: # Título do simulado
+2. Cada questão começa com uma linha ## Questão N (N = 1, 2, 3...).
+3. Logo abaixo vem o enunciado. Ele pode ter parágrafos, **negrito**, `código`, blocos de código, tabelas e listas comuns.
+4. Depois do enunciado, deixe uma linha em branco e escreva as alternativas como lista de tarefas:
    - [ ] alternativa errada
    - [x] alternativa correta
-6. Se o enunciado tiver uma lista comum, escreva uma frase entre ela e as alternativas (por exemplo: "Está correto o que se afirma em:").
-7. Não escreva nada depois das alternativas: nada de gabarito, explicação ou comentário.
-8. Não use HTML nem imagens.
+5. Cada questão tem exatamente 4 alternativas, e exatamente 1 delas marcada com [x].
+6. Não coloque letras nem números no início das alternativas. O sistema coloca A, B, C e D sozinho.
+7. O sistema embaralha as alternativas. Por isso, nenhuma alternativa pode depender da ordem ou da letra: nada de "todas as anteriores", "nenhuma das anteriores" ou "alternativas A e B".
+8. Se o enunciado tiver uma lista comum, escreva uma frase entre ela e as alternativas (por exemplo: "Está correto o que se afirma em:"). Sem essa frase, as duas listas se juntam.
+9. Não escreva nada depois das alternativas: nada de gabarito, explicação ou comentário.
+10. Não use HTML nem imagens.
 
 EXEMPLO DO FORMATO
 ````markdown
@@ -48,6 +44,3 @@ O que será exibido no console?
 - [ ] `"undefined"`
 - [ ] Um erro de execução
 ````
-
-ANOTAÇÕES
-[cole aqui suas anotações]

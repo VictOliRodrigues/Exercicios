@@ -69,7 +69,7 @@ Dois arquivos de apoio já estão prontos na pasta [modelos/](modelos/):
 | Arquivo | Para que serve |
 |---|---|
 | [modelos/modelo-questoes.md](modelos/modelo-questoes.md) | Simulado de exemplo com 5 questões que usam todos os recursos do formato (código, lista de afirmativas, tabela). Pode ser importado direto para testar o sistema. |
-| [modelos/prompt-chatgpt.txt](modelos/prompt-chatgpt.txt) | Prompt para colar no ChatGPT junto com as anotações. Basta trocar a quantidade e colar as anotações no final. |
+| [modelos/prompt-chatgpt.txt](modelos/prompt-chatgpt.txt) | Instruções de formato para colar no ChatGPT. O prompt **não pede questões**: só diz como o arquivo deve ser estruturado para a importação não falhar. O pedido em si (assunto, quantidade, anotações em texto, imagem ou PDF, estilo das questões) fica todo com o usuário. |
 
 No sistema, a tela de importação tem o botão **Baixar modelo (.md)** e mostra o prompt numa caixa com o botão **Copiar prompt**, além de um link para baixá-lo. O prompt é `.txt` de propósito, para não ser confundido com um arquivo de questões na hora de importar.
 
@@ -659,6 +659,7 @@ As fases são entregues em 4 blocos. Cada bloco termina com algo que dá para te
 |---|---|
 | Stack | Node + Express + EJS |
 | Formato do `.md` | modelo e prompt criados pelo sistema; as questões vêm do ChatGPT |
+| Prompt do ChatGPT | só define o formato do arquivo; conteúdo, quantidade e anotações são com o usuário |
 | Quem importa | cada usuário; na importação escolhe entre privado e um ou mais dos seus grupos |
 | Papel do admin | cria usuários e grupos e define os membros; não importa nem vê simulados ou resultados |
 | Grupos | só compartilham questões; cada tentativa é individual |
