@@ -1,0 +1,30 @@
+<%- include('../partials/head', { scripts: ['/js/prova.js'] }) %>
+<%- include('../partials/exam-clock', { finishForm: 'form-confirmar' }) %>
+
+<div class="page-header exam-header">
+  <h1><%= title %></h1>
+</div>
+
+<section class="card confirm-card" aria-labelledby="em-branco-titulo">
+  <h2 id="em-branco-titulo">Questões em branco</h2>
+  <p>
+    Você deixou <%= plural(blanks.length, 'questão', 'questões') %> em branco (<%= blanks.join(', ') %>).
+    Questões em branco contam como erradas. Deseja finalizar mesmo assim?
+  </p>
+  <div class="actions">
+    <form id="form-confirmar" method="post" action="/simulados/<%= attempt.id %>/finalizar" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <input type="hidden" name="confirmar" value="1">
+      <button type="submit" class="button button-primary">Sim, finalizar</button>
+    </form>
+    <form method="post" action="/simulados/<%= attempt.id %>/reorganizar" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <button type="submit" class="button button-secondary">Não, responder as em branco</button>
+    </form>
+  </div>
+  <p class="hint">
+    Ao responder, as questões em branco vão para o final da prova, numa página nova. Os números não mudam e o cronômetro continua correndo.
+    <a href="/simulados/<%= attempt.id %>?pagina=<%= returnPage %>">Voltar à prova sem mudar a ordem</a>.
+  </p>
+</section>
+<%- include('../partials/foot') %>

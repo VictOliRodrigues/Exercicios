@@ -8,6 +8,8 @@ import { idListField, isUuid } from '../../http/forms.js';
 import { flash, renderNotFound, userOnly } from '../../http/session.js';
 import { buildGptFixMessage } from '../../markdown/gpt-fix-message.js';
 import { describeIssue, parseQuestions } from '../../markdown/parse-questions.js';
+import { MAX_TIME_LIMIT_MINUTES } from '../attempts/attempts.routes.js';
+import { listAttemptsForBank, settleExpiredAttempts } from '../attempts/attempts.service.js';
 import { listGroupsOfUser, type GroupSummary } from '../groups/groups.service.js';
 import {
   deleteBank,
@@ -184,9 +186,11 @@ export function bankRoutes({ db, crypto, env, fileStore }: AppDeps): Router {
     const access = await accessFromParams(req);
     if (!access) return renderNotFound(req, res);
     const { bank, isOwner, viaGroups } = access;
+    const userId = req.currentUser!.id;
 
     const importResult = req.session.importResult;
     if (importResult) delete req.session.importResult;
+    await settleExpiredAttempts(db, crypto, userId);
 
     res.render('bancos/banco', {
       title: crypto.decryptField(bank.titleEnc, 'question_banks', 'title', bank.id),
@@ -195,8 +199,10 @@ export function bankRoutes({ db, crypto, env, fileStore }: AppDeps): Router {
       viaGroups,
       ownerName: isOwner ? null : await findOwnerName(db, crypto, bank.userId),
       sharedGroups: isOwner ? await listSharedGroups(db, crypto, bank.id) : [],
-      myGroups: isOwner ? await listGroupsOfUser(db, crypto, req.currentUser!.id) : [],
+      myGroups: isOwner ? await listGroupsOfUser(db, crypto, userId) : [],
       importResult: importResult?.bankId === bank.id ? importResult : null,
+      attempts: await listAttemptsForBank(db, userId, bank.id),
+      maxMinutes: MAX_TIME_LIMIT_MINUTES,
     });
   });
 

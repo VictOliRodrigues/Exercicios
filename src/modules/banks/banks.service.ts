@@ -32,6 +32,13 @@ export function decryptTitle(crypto: CryptoService, bank: Pick<BankRow, 'id' | '
   return crypto.decryptField(bank.titleEnc, 'question_banks', 'title', bank.id);
 }
 
+export function decryptQuestion(
+  crypto: CryptoService,
+  row: { id: string; payloadEnc: string },
+): QuestionPayload {
+  return JSON.parse(crypto.decryptField(row.payloadEnc, 'questions', 'payload', row.id));
+}
+
 export interface ImportInput {
   ownerId: string;
   title: string;
@@ -353,6 +360,16 @@ export async function loadPanel(
   }));
 
   return { mine, received, groups };
+}
+
+/** Título do simulado, mesmo excluído (o relatório de quem fez continua mostrando o nome). */
+export async function findBankTitle(db: Database, crypto: CryptoService, bankId: string) {
+  const [bank] = await db
+    .select({ id: questionBanks.id, titleEnc: questionBanks.titleEnc })
+    .from(questionBanks)
+    .where(eq(questionBanks.id, bankId))
+    .limit(1);
+  return bank ? decryptTitle(crypto, bank) : '';
 }
 
 export async function findOwnerName(db: Database, crypto: CryptoService, ownerId: string) {

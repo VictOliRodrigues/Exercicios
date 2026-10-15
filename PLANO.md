@@ -310,7 +310,7 @@ O `POST /finalizar` é idempotente: se o simulado já foi finalizado, ele só re
 | POST | `/bancos/:id/simulados` | usuário | **Iniciar novo simulado** |
 | GET | `/simulados/:id?pagina=N` | usuário | prova |
 | POST | `/simulados/:id/pagina` | usuário | salva a página e navega |
-| PUT | `/api/simulados/:id/respostas/:questaoId` | usuário | salvamento automático (JSON) |
+| PUT | `/api/simulados/:id/respostas/:numero` | usuário | salvamento automático (JSON); `:numero` é o número da questão na tentativa |
 | POST | `/simulados/:id/finalizar` | usuário | finaliza ou mostra a confirmação de em branco |
 | POST | `/simulados/:id/reorganizar` | usuário | "Não, responder as em branco" |
 | POST | `/simulados/:id/descartar` | usuário | descarta tentativa em andamento |
@@ -607,7 +607,7 @@ As fases são entregues em 4 blocos. Cada bloco termina com algo que dá para te
 |---|---|---|
 | 1. Fundação + deploy | 0, 1 e 2, e publicar no Coolify | código pronto e testado localmente, inclusive a imagem Docker; falta publicar |
 | 2. Admin + importação | 3 e 4 | código pronto e testado localmente (101 testes) |
-| 3. Prova + relatório | 5 e 6 | — |
+| 3. Prova + relatório | 5 e 6 | código pronto e testado localmente (140 testes) e conferido no navegador (desktop, celular, tema escuro) |
 | 4. Revisão final | 7 | — |
 
 | Fase | Entrega | Pronto quando |
@@ -696,3 +696,6 @@ As fases são entregues em 4 blocos. Cada bloco termina com algo que dá para te
 | Sortear N questões | sim, opcional |
 | Gráfico de evolução | não |
 | Imagens | não, por enquanto |
+| Resposta enviada pelo navegador | a letra vista (A–D); o servidor converte para o índice original, que nunca vai para a página (a posição no arquivo poderia dar pista do gabarito) |
+| Tempo limite máximo | 600 minutos |
+| Dono que exclui o simulado | perde o simulado, mas os próprios relatórios continuam no histórico |

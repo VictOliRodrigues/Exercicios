@@ -5,6 +5,28 @@
 </div>
 
 <div class="stack">
+  <% if (attempts.inProgress.length) { %>
+    <section class="card" aria-labelledby="em-andamento">
+      <div class="section-title">
+        <h2 id="em-andamento">Em andamento</h2>
+      </div>
+      <ul class="item-list">
+        <% attempts.inProgress.forEach(function (attempt) { %>
+          <li>
+            <div class="item-main">
+              <a class="item-title" href="/simulados/<%= attempt.id %>"><%= attempt.title %></a>
+              <div class="item-meta">
+                <span>Iniciado em <%= formatDateTime(attempt.startedAt) %></span>
+                <span><%= attempt.answered %>/<%= attempt.totalQuestions %> respondidas</span>
+              </div>
+            </div>
+            <a class="button button-secondary button-small" href="/simulados/<%= attempt.id %>">Continuar</a>
+          </li>
+        <% }) %>
+      </ul>
+    </section>
+  <% } %>
+
   <section class="card" aria-labelledby="meus-simulados">
     <div class="section-title">
       <h2 id="meus-simulados">Meus simulados</h2>
@@ -54,5 +76,41 @@
       <% } %>
     </section>
   <% }) %>
+
+  <section class="card<% if (attempts.history.length) { %> table-card<% } %>" aria-labelledby="historico">
+    <% if (!attempts.history.length) { %>
+      <h2 id="historico">Histórico</h2>
+      <p class="empty-note">Os simulados que você finalizar aparecem aqui, com a nota e o tempo.</p>
+    <% } else { %>
+      <h2 id="historico" class="table-card-title">Histórico</h2>
+      <table class="table responsive-table">
+        <thead>
+          <tr>
+            <th scope="col">Data</th>
+            <th scope="col">Simulado</th>
+            <th scope="col">Nota</th>
+            <th scope="col">Tempo</th>
+            <th scope="col"><span class="sr-only">Relatório</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% attempts.history.forEach(function (attempt) { %>
+            <tr>
+              <td data-label="Data" class="nowrap"><%= formatDateTime(attempt.finishedAt) %></td>
+              <td data-label="Simulado" class="break-anywhere"><%= attempt.title %></td>
+              <td data-label="Nota"><strong><%= formatScore(attempt.score) %></strong></td>
+              <td data-label="Tempo">
+                <div>
+                  <%= formatDuration(attempt.durationSeconds) %>
+                  <% if (attempt.finishReason === 'time') { %><span class="cell-note">Tempo esgotado</span><% } %>
+                </div>
+              </td>
+              <td class="row-actions"><a href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
 </div>
 <%- include('partials/foot') %>

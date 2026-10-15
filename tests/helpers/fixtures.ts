@@ -70,7 +70,7 @@ export function fixtures(ctx: () => TestContext) {
     return match[1]!;
   }
 
-  /** Simula "já fez": a tentativa só é criada pela tela na entrega 3. */
+  /** Simula "já fez" direto no banco, sem passar pela tela de iniciar. */
   async function addAttempt(userId: string, bankId: string) {
     await ctx().db.insert(attempts).values({
       id: uuidv7(),
@@ -80,6 +80,18 @@ export function fixtures(ctx: () => TestContext) {
       totalQuestions: 1,
       startedAt: new Date(),
     });
+  }
+
+  /** "Iniciar novo simulado" pela página do simulado; devolve o id da tentativa. */
+  async function startAttempt(
+    user: ReturnType<typeof agent>,
+    bankId: string,
+    options: { quantidade?: string; minutos?: string } = {},
+  ) {
+    const res = await postForm(user, `/bancos/${bankId}`, `/bancos/${bankId}/simulados`, options);
+    const match = /^\/simulados\/([0-9a-f-]{36})$/.exec(res.headers.location ?? '');
+    if (!match) throw new Error(`Início falhou (${res.status}): ${res.headers.location}`);
+    return match[1]!;
   }
 
   /** Envia um formulário simples, com o token CSRF tirado da página indicada. */
@@ -106,6 +118,7 @@ export function fixtures(ctx: () => TestContext) {
     upload,
     importBank,
     addAttempt,
+    startAttempt,
     postForm,
   };
 }

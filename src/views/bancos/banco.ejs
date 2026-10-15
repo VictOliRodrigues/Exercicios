@@ -37,9 +37,87 @@
     <% } %>
   <% } %>
 
-  <section class="card">
-    <h2>Fazer o simulado</h2>
-    <p class="muted">As opções (quantidade de questões e tempo limite) e o botão Iniciar chegam na próxima entrega.</p>
+  <section class="card" aria-labelledby="fazer-simulado">
+    <h2 id="fazer-simulado">Fazer o simulado</h2>
+    <form method="post" action="/bancos/<%= bank.id %>/simulados" class="form form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <label class="field">
+        <span>Quantidade de questões</span>
+        <input type="number" name="quantidade" min="1" max="<%= bank.questionCount %>" step="1" inputmode="numeric" placeholder="Todas (<%= bank.questionCount %>)">
+        <small class="hint">Em branco, todas. Um número menor sorteia as questões.</small>
+      </label>
+      <label class="field">
+        <span>Tempo limite (minutos)</span>
+        <input type="number" name="minutos" min="1" max="<%= maxMinutes %>" step="1" inputmode="numeric" placeholder="Sem limite">
+        <small class="hint">Em branco, sem limite. Quando o tempo acaba, a prova é finalizada sozinha.</small>
+      </label>
+      <div class="actions">
+        <button type="submit" class="button button-primary">Iniciar novo simulado</button>
+      </div>
+      <p class="hint full">O cronômetro começa ao clicar em Iniciar. As questões e as alternativas são embaralhadas a cada tentativa, 10 questões por página.</p>
+    </form>
+  </section>
+
+  <section class="card<% if (attempts.length) { %> table-card<% } %>" aria-labelledby="suas-tentativas">
+    <% if (!attempts.length) { %>
+      <h2 id="suas-tentativas">Suas tentativas</h2>
+      <p class="empty-note">Você ainda não fez este simulado. Suas tentativas e notas aparecem aqui.</p>
+    <% } else { %>
+      <h2 id="suas-tentativas" class="table-card-title">Suas tentativas</h2>
+      <table class="table responsive-table">
+        <thead>
+          <tr>
+            <th scope="col">Início</th>
+            <th scope="col">Nota</th>
+            <th scope="col">Tempo</th>
+            <th scope="col"><span class="sr-only">Ações</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% attempts.forEach(function (attempt) { %>
+            <tr>
+              <td data-label="Início" class="nowrap"><%= formatDateTime(attempt.startedAt) %></td>
+              <% if (attempt.status === 'in_progress') { %>
+                <td data-label="Nota">
+                  <div>
+                    <span class="badge badge-warning">Em andamento</span>
+                    <span class="cell-note"><%= attempt.answered %>/<%= attempt.totalQuestions %> respondidas</span>
+                  </div>
+                </td>
+                <td data-label="Tempo">—</td>
+                <td class="row-actions">
+                  <div class="row-actions-list">
+                    <a href="/simulados/<%= attempt.id %>">Continuar</a>
+                    <form method="post" action="/simulados/<%= attempt.id %>/descartar" class="inline-form" data-confirm="Descartar esta tentativa? As respostas dela serão apagadas.">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+                      <button type="submit" class="link-button link-danger">Descartar</button>
+                    </form>
+                  </div>
+                </td>
+              <% } else { %>
+                <td data-label="Nota">
+                  <div>
+                    <strong><%= formatScore(attempt.score) %></strong>
+                    <span class="cell-note"><%= plural(attempt.totalQuestions, 'questão', 'questões') %></span>
+                  </div>
+                </td>
+                <td data-label="Tempo">
+                  <div>
+                    <%= formatDuration(attempt.durationSeconds) %>
+                    <% if (attempt.finishReason === 'time') { %><span class="cell-note">Tempo esgotado</span><% } %>
+                  </div>
+                </td>
+                <td class="row-actions">
+                  <div class="row-actions-list">
+                    <a href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a>
+                  </div>
+                </td>
+              <% } %>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
   </section>
 
   <% if (isOwner) { %>

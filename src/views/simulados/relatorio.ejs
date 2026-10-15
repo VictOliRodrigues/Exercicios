@@ -1,0 +1,97 @@
+<%- include('../partials/head') %>
+<%
+  const byTime = attempt.finishReason === 'time';
+  const wrongOnly = attempt.wrongCount - attempt.blankCount;
+%>
+<a class="back-link" href="<%= canOpenBank ? '/bancos/' + attempt.bankId : '/' %>">← <%= canOpenBank ? 'Simulado' : 'Painel' %></a>
+<div class="page-header">
+  <h1>Relatório</h1>
+  <div class="subtitle item-meta">
+    <span class="item-title"><%= bankTitle %></span>
+    <span>Finalizado em <%= formatDateTime(attempt.finishedAt) %></span>
+  </div>
+</div>
+
+<div class="stack">
+  <% if (byTime) { %>
+    <div class="alert alert-warning" role="status">Encerrado por tempo esgotado. As questões em branco contaram como erradas.</div>
+  <% } %>
+
+  <section class="card" aria-labelledby="resultado">
+    <h2 id="resultado" class="sr-only">Resultado</h2>
+    <div class="stats">
+      <div class="stat stat-score">
+        <span class="stat-label">Nota</span>
+        <span class="stat-value"><%= formatScore(attempt.score) %></span>
+        <span class="stat-note"><%= formatPercent(attempt.correctCount, attempt.totalQuestions) %> de acerto</span>
+      </div>
+      <div class="stat stat-right">
+        <span class="stat-label">Acertos</span>
+        <span class="stat-value"><%= attempt.correctCount %></span>
+      </div>
+      <div class="stat stat-wrong">
+        <span class="stat-label">Erros</span>
+        <span class="stat-value"><%= attempt.wrongCount %></span>
+        <% if (attempt.blankCount) { %>
+          <span class="stat-note">sendo <%= attempt.blankCount %> em branco</span>
+        <% } %>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Total</span>
+        <span class="stat-value"><%= attempt.totalQuestions %></span>
+      </div>
+    </div>
+
+    <dl class="data-list report-data">
+      <dt>Tempo total</dt>
+      <dd><%= formatDuration(attempt.durationSeconds) %></dd>
+      <% if (attempt.timeLimitSeconds) { %>
+        <dt>Tempo limite</dt>
+        <dd><%= formatDuration(attempt.timeLimitSeconds) %></dd>
+      <% } %>
+      <dt>Como terminou</dt>
+      <dd><%= byTime ? 'Tempo esgotado' : 'Finalizado por você' %></dd>
+      <dt>Início</dt>
+      <dd><%= formatDateTime(attempt.startedAt) %></dd>
+    </dl>
+
+    <% if (canOpenBank) { %>
+      <div class="actions">
+        <a class="button button-primary" href="/bancos/<%= attempt.bankId %>">Fazer de novo</a>
+        <a class="button button-secondary" href="/">Painel</a>
+      </div>
+    <% } %>
+  </section>
+
+  <section class="card" aria-labelledby="erradas">
+    <h2 id="erradas">Questões erradas e em branco</h2>
+    <% if (!items.length) { %>
+      <p class="empty-note">Você acertou todas as questões.</p>
+    <% } else { %>
+      <p class="muted">
+        <%= wrongOnly ? plural(wrongOnly, 'errada', 'erradas') : '' %><%= wrongOnly && attempt.blankCount ? ' e ' : '' %><%= attempt.blankCount ? plural(attempt.blankCount, 'em branco', 'em branco') : '' %>, na ordem dos números. As letras são as que você viu nesta tentativa.
+      </p>
+      <ol class="review-list">
+        <% items.forEach(function (item) { %>
+          <li class="review-item" id="questao-<%= item.number %>">
+            <h3 class="question-number">Questão <%= item.number %></h3>
+            <div class="rich-text"><%- item.statementHtml %></div>
+            <div class="answer answer-wrong">
+              <span class="answer-label">Sua resposta:</span>
+              <% if (item.selected) { %>
+                <span class="answer-text rich-text"><strong><%= letterLabel(item.selected.letter) %>)</strong> <%- item.selected.html %></span>
+              <% } else { %>
+                <span class="answer-text">Em branco</span>
+              <% } %>
+            </div>
+            <div class="answer answer-right">
+              <span class="answer-label">Correta:</span>
+              <span class="answer-text rich-text"><strong><%= letterLabel(item.correct.letter) %>)</strong> <%- item.correct.html %></span>
+            </div>
+          </li>
+        <% }) %>
+      </ol>
+    <% } %>
+  </section>
+</div>
+<%- include('../partials/foot') %>

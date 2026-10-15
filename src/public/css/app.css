@@ -955,3 +955,414 @@ legend {
     margin-top: 0.5rem;
   }
 }
+
+/* Tabela dentro de cartão, com título */
+.table-card > .table-card-title {
+  margin: 0;
+  padding: 1.25rem 1.5rem 0.75rem;
+}
+
+/* Prova: barra fixa com o cronômetro */
+/* O fundo e a linha de baixo vão de ponta a ponta da tela sem criar rolagem horizontal. */
+.exam-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: -1.5rem 0 1.25rem;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 100vmax var(--surface),
+    0 1px 0 100vmax var(--border);
+  clip-path: inset(0 -100vmax -1px);
+}
+
+.exam-bar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1.5rem;
+  padding: 0.6rem 0;
+  font-size: 0.95rem;
+}
+
+.exam-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.exam-stat-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.exam-clock {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+}
+
+.exam-remaining.is-urgent {
+  color: var(--error-text);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  border-radius: 6px;
+  padding: 0 0.5rem;
+}
+
+.exam-remaining.is-urgent .exam-stat-label {
+  color: inherit;
+}
+
+.exam-header {
+  margin-bottom: 1rem;
+}
+
+.exam-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 15rem;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.exam-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.exam-side {
+  position: sticky;
+  top: 4.5rem;
+}
+
+/* Questão */
+.question {
+  scroll-margin-top: 5rem;
+}
+
+.question-number {
+  font-size: 0.95rem;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+}
+
+.rich-text {
+  overflow-wrap: anywhere;
+}
+
+.rich-text > :last-child,
+.rich-text li > :last-child {
+  margin-bottom: 0;
+}
+
+.rich-text ul,
+.rich-text ol {
+  margin: 0 0 1rem;
+  padding-left: 1.4rem;
+}
+
+.rich-text pre {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 0 0 1rem;
+  overflow-x: auto;
+  overflow-wrap: normal;
+}
+
+.rich-text :not(pre) > code {
+  background: var(--surface-muted);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+}
+
+.rich-text table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0 0 1rem;
+  overflow-wrap: normal;
+}
+
+.rich-text th,
+.rich-text td {
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.75rem;
+  text-align: left;
+}
+
+.rich-text th {
+  background: var(--surface-muted);
+}
+
+.rich-text blockquote {
+  margin: 0 0 1rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.option:hover {
+  border-color: var(--primary);
+}
+
+.option:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--info-bg);
+}
+
+.option input {
+  margin: 0.3rem 0 0;
+  accent-color: var(--primary);
+}
+
+.option-letter {
+  font-weight: 700;
+}
+
+.exam-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.exam-nav .button-primary {
+  margin-left: auto;
+}
+
+.save-status:empty {
+  display: none;
+}
+
+.save-status {
+  margin: 0;
+  color: var(--error-text);
+}
+
+/* Mapa de questões */
+.exam-map {
+  padding: 1rem;
+}
+
+.exam-map > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.map-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.map-swatch {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+}
+
+.map-swatch.is-answered {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.map-swatch.is-current-page {
+  border-width: 2px;
+  border-color: var(--text);
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.4rem, 1fr));
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.map-item {
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  height: 2.4rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.map-item:hover {
+  border-color: var(--primary);
+}
+
+.map-item.is-answered {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+.map-item.is-current-page {
+  border-width: 2px;
+  border-color: var(--text);
+}
+
+.exam-map .hint {
+  margin: 0;
+}
+
+.confirm-card {
+  max-width: 720px;
+}
+
+/* Relatório */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stat-score .stat-value {
+  color: var(--primary);
+}
+
+.stat-right .stat-value {
+  color: var(--success-text);
+}
+
+.stat-wrong .stat-value {
+  color: var(--error-text);
+}
+
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.review-item {
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--border);
+  scroll-margin-top: 1rem;
+}
+
+.review-item:last-child {
+  padding-bottom: 0;
+}
+
+.answer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  margin-top: 0.6rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.answer-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.answer-text {
+  min-width: 0;
+}
+
+.answer-wrong {
+  background: var(--error-bg);
+  color: var(--error-text);
+  border-color: var(--error-border);
+}
+
+.answer-right {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border-color: var(--success-border);
+}
+
+@media (max-width: 760px) {
+  .exam-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* No celular, o mapa (recolhível) fica antes das questões. */
+  .exam-side {
+    position: static;
+    order: -1;
+  }
+
+  .exam-bar-inner {
+    gap: 0.25rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .table-card > .table-card-title {
+    padding: 1.25rem 1rem 0.25rem;
+  }
+}

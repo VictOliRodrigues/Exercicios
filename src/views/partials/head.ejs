@@ -7,6 +7,9 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/app.css">
   <script src="/js/app.js" defer></script>
+  <% (locals.scripts || []).forEach(function (src) { %>
+  <script src="<%= src %>" defer></script>
+  <% }) %>
 </head>
 <body>
 <% if (locals.currentUser) { %>

@@ -1,0 +1,27 @@
+<%#
+  Barra fixa da prova. O prova.js parte dos segundos informados pelo servidor e, quando o tempo
+  limite zera, envia o formulário indicado em data-finish-form para data-finish-url.
+%>
+<div class="exam-bar" role="region" aria-label="Andamento da prova">
+  <div class="exam-bar-inner"
+       data-exam-clock
+       data-elapsed="<%= clock.elapsed %>"
+       <% if (clock.remaining !== null) { %>data-remaining="<%= clock.remaining %>"<% } %>
+       data-finish-form="<%= finishForm %>"
+       data-finish-url="/simulados/<%= attempt.id %>/finalizar">
+    <span class="exam-stat">
+      <span class="exam-stat-label">Tempo</span>
+      <strong class="exam-clock" data-clock-elapsed><%= formatClock(clock.elapsed) %></strong>
+    </span>
+    <% if (clock.remaining !== null) { %>
+      <span class="exam-stat exam-remaining<% if (clock.remaining <= 300) { %> is-urgent<% } %>" data-clock-remaining-box>
+        <span class="exam-stat-label">Restante</span>
+        <strong class="exam-clock" data-clock-remaining><%= formatClock(clock.remaining) %></strong>
+      </span>
+    <% } %>
+    <% if (locals.exam) { %>
+      <span class="exam-stat">Página <%= exam.page %> de <%= exam.pageCount %></span>
+      <span class="exam-stat"><span><strong data-answered-count><%= exam.answered %></strong>/<%= exam.total %> respondidas</span></span>
+    <% } %>
+  </div>
+</div>

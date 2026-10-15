@@ -14,6 +14,7 @@ import { exposeFlash, loadCurrentUser, renderNotFound, SESSION_COOKIE } from './
 import './http/types.js';
 import { adminGroupsRoutes } from './modules/admin-groups/admin-groups.routes.js';
 import { adminUsersRoutes } from './modules/admin-users/admin-users.routes.js';
+import { attemptRoutes } from './modules/attempts/attempts.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { bankRoutes, bankUploadParser } from './modules/banks/banks.routes.js';
 import { homeRoutes } from './modules/home/home.routes.js';
@@ -102,6 +103,7 @@ export function createApp(deps: AppDeps) {
   app.use(homeRoutes(deps));
   app.use(authRoutes(deps));
   app.use(bankRoutes(deps));
+  app.use(attemptRoutes(deps));
   app.use('/admin', adminUsersRoutes(deps));
   app.use('/admin', adminGroupsRoutes(deps));
 

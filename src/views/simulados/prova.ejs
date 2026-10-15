@@ -1,0 +1,63 @@
+<%- include('../partials/head', { scripts: ['/js/prova.js'] }) %>
+<%- include('../partials/exam-clock', { finishForm: 'form-prova' }) %>
+
+<div class="page-header exam-header">
+  <h1><%= title %></h1>
+</div>
+
+<form id="form-prova" method="post" action="/simulados/<%= attempt.id %>/pagina" class="exam-layout"
+      data-answer-url="/api/simulados/<%= attempt.id %>/respostas/" data-page="<%= exam.page %>">
+  <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+
+  <div class="exam-questions">
+    <% exam.questions.forEach(function (question) { %>
+      <article class="card question" id="questao-<%= question.number %>">
+        <h2 class="question-number">Questão <%= question.number %></h2>
+        <div class="rich-text"><%- question.statementHtml %></div>
+        <fieldset class="options">
+          <legend class="sr-only">Alternativas da questão <%= question.number %></legend>
+          <% question.options.forEach(function (html, letter) { %>
+            <label class="option">
+              <input type="radio" name="q<%= question.number %>" value="<%= letter %>"<% if (question.selectedLetter === letter) { %> checked<% } %>>
+              <span class="option-letter"><%= letterLabel(letter) %>)</span>
+              <span class="option-text rich-text"><%- html %></span>
+            </label>
+          <% }) %>
+        </fieldset>
+      </article>
+    <% }) %>
+
+    <div class="exam-nav">
+      <% if (exam.page > 1) { %>
+        <button type="submit" name="destino" value="<%= exam.page - 1 %>" class="button button-secondary">← Anterior</button>
+      <% } %>
+      <% if (exam.page < exam.pageCount) { %>
+        <button type="submit" name="destino" value="<%= exam.page + 1 %>" class="button button-primary">Próxima →</button>
+      <% } else { %>
+        <button type="submit" formaction="/simulados/<%= attempt.id %>/finalizar" class="button button-primary">Finalizar</button>
+      <% } %>
+    </div>
+    <p class="hint save-status" data-save-status role="status" aria-live="polite"></p>
+  </div>
+
+  <aside class="exam-side">
+    <details class="card exam-map" open data-exam-map>
+      <summary>Mapa de questões</summary>
+      <p class="map-legend">
+        <span><span class="map-swatch is-answered" aria-hidden="true"></span>Respondida</span>
+        <span><span class="map-swatch" aria-hidden="true"></span>Em branco</span>
+        <span><span class="map-swatch is-current-page" aria-hidden="true"></span>Nesta página</span>
+      </p>
+      <div class="map-grid">
+        <% exam.map.forEach(function (item) { %>
+          <button type="submit" name="ir" value="<%= item.number %>"
+                  class="map-item<% if (item.answered) { %> is-answered<% } %><% if (item.page === exam.page) { %> is-current-page<% } %>"
+                  data-map-number="<%= item.number %>" data-map-page="<%= item.page %>"
+                  aria-label="Questão <%= item.number %>, <%= item.answered ? 'respondida' : 'em branco' %>"><%= item.number %></button>
+        <% }) %>
+      </div>
+      <p class="hint">O botão Finalizar fica na última página.</p>
+    </details>
+  </aside>
+</form>
+<%- include('../partials/foot') %>
