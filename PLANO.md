@@ -98,8 +98,10 @@ Enunciado da questão. Pode ter **negrito**, `código`, tabelas, listas e blocos
 | Ordem das alternativas | O sistema **embaralha** as alternativas. Por isso, uma alternativa como "todas as anteriores", "nenhuma das anteriores" ou "alternativas A e B" é **erro de importação**. |
 | Texto depois das alternativas | É ignorado e gera um aviso (não bloqueia a importação). Cobre o caso de o ChatGPT acrescentar gabarito ou explicação. |
 | Texto antes da 1ª questão | É ignorado e gera um aviso. |
-| HTML cru | É removido, por segurança. |
-| Imagens | Não são suportadas. |
+| HTML cru | É removido, por segurança, e gera um aviso. |
+| Links | Viram texto comum, para ninguém sair da prova sem querer. |
+| Alternativas repetidas | Duas alternativas com o mesmo texto são erro de importação. |
+| Imagens | Não são suportadas: uma questão com imagem é erro de importação, porque provavelmente depende dela. |
 
 **O parser também aceita:** UTF-8 com ou sem BOM, quebras de linha do Windows (CRLF), marcadores `-`, `*` ou `+` e espaços extras. Como a leitura é feita pela árvore do Markdown, um `- [x]` dentro de bloco de código não é confundido com alternativa.
 
@@ -496,7 +498,7 @@ No login e no "Esqueci minha senha", o servidor calcula o HMAC do que foi digita
 - [ ] Cookie de sessão `httpOnly`, `Secure`, `SameSite=Lax` e com nome próprio. A sessão é regenerada no login e expira após 8 h **sem uso**, renovando a cada requisição.
 - [ ] A cada requisição, o app confere `active`, `must_change_password` e `session_version`. Redefinir senha, trocar senha ou desativar o usuário derruba as sessões dele.
 - [ ] Token CSRF em todo `POST` de formulário e no cabeçalho dos `fetch`.
-- [ ] Login com mensagem genérica, limite de tentativas por IP e bloqueio de 15 min após 5 falhas. O Argon2 roda mesmo quando o e-mail não existe, para o tempo de resposta não revelar quem está cadastrado.
+- [ ] Login com mensagem genérica, limite de tentativas erradas por IP (os logins certos não contam, porque um grupo na mesma rede divide o IP) e bloqueio de 15 min após 5 falhas. O Argon2 roda mesmo quando o e-mail não existe, para o tempo de resposta não revelar quem está cadastrado.
 - [ ] "Esqueci minha senha" sempre dá a mesma resposta e tem limite por IP.
 - [ ] Middleware por perfil. Toda consulta de simulado passa por uma única função de permissão (dono, membro de um grupo compartilhado ou quem já fez; a regra está na [seção 7](#7-modelo-de-dados)). Ações de dono checam o dono. Recurso alheio e rota de outro perfil respondem 404.
 - [ ] Ao importar ou mudar o compartilhamento, o servidor confere se o usuário é membro de todos os grupos escolhidos.
@@ -604,7 +606,7 @@ As fases são entregues em 4 blocos. Cada bloco termina com algo que dá para te
 | Entrega | Fases | Situação |
 |---|---|---|
 | 1. Fundação + deploy | 0, 1 e 2, e publicar no Coolify | código pronto e testado localmente, inclusive a imagem Docker; falta publicar |
-| 2. Admin + importação | 3 e 4 | — |
+| 2. Admin + importação | 3 e 4 | código pronto e testado localmente (101 testes) |
 | 3. Prova + relatório | 5 e 6 | — |
 | 4. Revisão final | 7 | — |
 

@@ -69,6 +69,7 @@ export async function buildTestApp(overrides: Record<string, string> = {}) {
   });
   const crypto = createCryptoService(createKeyring(env.ENCRYPTION_KEY, env.ENCRYPTION_KEY_VERSION));
   const fileStore = createFileStore(env.STORAGE_PATH, crypto);
+  await fileStore.ensureReady();
   const app = createApp({ env, db, crypto, fileStore, sessionStore: new session.MemoryStore() });
 
   return { app, db, pool, crypto, env, close: () => pool.end() };

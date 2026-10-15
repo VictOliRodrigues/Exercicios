@@ -1,0 +1,9 @@
+<li>
+  <div class="item-main">
+    <a class="item-title" href="/bancos/<%= bank.id %>"><%= bank.title %></a>
+    <div class="item-meta">
+      <span><%= plural(bank.questionCount, 'questão', 'questões') %></span>
+      <span class="badge <%= badgeClass %>"><%= label %></span>
+    </div>
+  </div>
+</li>

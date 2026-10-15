@@ -1,7 +1,10 @@
 import { Router } from 'express';
+import type { AppDeps } from '../../app.js';
 import { homePathFor, userOnly } from '../../http/session.js';
+import { loadPanel } from '../banks/banks.service.js';
+import { listGroupsOfUser } from '../groups/groups.service.js';
 
-export function homeRoutes(): Router {
+export function homeRoutes({ db, crypto }: AppDeps): Router {
   const router = Router();
 
   router.get('/', (req, res, next) => {
@@ -13,10 +16,13 @@ export function homeRoutes(): Router {
     next();
   });
 
-  router.get('/', ...userOnly, (req, res) => {
+  router.get('/', ...userOnly, async (req, res) => {
+    const user = req.currentUser!;
+    const myGroups = await listGroupsOfUser(db, crypto, user.id);
     res.render('painel', {
       title: 'Painel',
-      firstName: req.currentUser!.name.split(/\s+/)[0],
+      firstName: user.name.split(/\s+/)[0],
+      panel: await loadPanel(db, crypto, user.id, myGroups),
     });
   });
 

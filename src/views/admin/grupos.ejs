@@ -1,0 +1,51 @@
+<%- include('../partials/head') %>
+<div class="page-header">
+  <h1>Grupos de estudo</h1>
+  <p class="subtitle muted">Os grupos servem para os membros compartilharem simulados. Cada pessoa faz os simulados e vê os resultados só para si.</p>
+</div>
+
+<div class="stack">
+  <section class="card">
+    <h2>Criar grupo</h2>
+    <% if (error) { %>
+      <div class="alert alert-error" role="alert"><%= error %></div>
+    <% } %>
+    <form method="post" action="/admin/grupos" class="inline-fields">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <label class="field">
+        <span>Nome do grupo</span>
+        <input type="text" name="nome" value="<%= nome %>" maxlength="80" autocomplete="off" required>
+      </label>
+      <button type="submit" class="button button-primary">Criar grupo</button>
+    </form>
+  </section>
+
+  <section class="card table-card">
+    <% if (!groups.length) { %>
+      <div class="empty-state">
+        <h2>Nenhum grupo ainda</h2>
+        <p class="muted">Crie um grupo e depois adicione os membros.</p>
+      </div>
+    <% } else { %>
+      <table class="table responsive-table">
+        <thead>
+          <tr>
+            <th scope="col">Grupo</th>
+            <th scope="col" class="numeric">Membros</th>
+            <th scope="col" class="numeric">Simulados compartilhados</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% groups.forEach(function (group) { %>
+            <tr>
+              <td data-label="Grupo"><a href="/admin/grupos/<%= group.id %>"><strong><%= group.name %></strong></a></td>
+              <td data-label="Membros" class="numeric"><%= group.memberCount %></td>
+              <td data-label="Simulados" class="numeric"><%= group.bankCount %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</div>
+<%- include('../partials/foot') %>

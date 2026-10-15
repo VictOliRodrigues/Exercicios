@@ -9,10 +9,13 @@ import type { CryptoService } from './crypto/index.js';
 import type { FileStore } from './crypto/file-store.js';
 import type { Database } from './db/client.js';
 import { CSRF_ERROR_CODE, csrfSynchronisedProtection, generateToken } from './http/csrf.js';
+import { viewHelpers } from './http/format.js';
 import { exposeFlash, loadCurrentUser, renderNotFound, SESSION_COOKIE } from './http/session.js';
 import './http/types.js';
+import { adminGroupsRoutes } from './modules/admin-groups/admin-groups.routes.js';
 import { adminUsersRoutes } from './modules/admin-users/admin-users.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
+import { bankRoutes, bankUploadParser } from './modules/banks/banks.routes.js';
 import { homeRoutes } from './modules/home/home.routes.js';
 
 export interface AppDeps {
@@ -33,6 +36,7 @@ export function createApp(deps: AppDeps) {
   app.set('view engine', 'ejs');
   app.set('views', path.join(import.meta.dirname, 'views'));
   app.locals.appName = 'Simulados';
+  Object.assign(app.locals, viewHelpers);
 
   app.use(
     helmet({
@@ -87,14 +91,19 @@ export function createApp(deps: AppDeps) {
   app.use(loadCurrentUser(db, crypto));
   app.use((req, res, next) => {
     res.locals.csrfToken = () => generateToken(req);
+    res.locals.currentPath = req.path;
     next();
   });
+  // O upload é multipart: o token CSRF só existe depois que o multer lê o formulário.
+  app.post('/bancos', bankUploadParser(env));
   app.use(csrfSynchronisedProtection);
   app.use(exposeFlash);
 
-  app.use(homeRoutes());
+  app.use(homeRoutes(deps));
   app.use(authRoutes(deps));
-  app.use('/admin', adminUsersRoutes());
+  app.use(bankRoutes(deps));
+  app.use('/admin', adminUsersRoutes(deps));
+  app.use('/admin', adminGroupsRoutes(deps));
 
   app.use(renderNotFound);
 

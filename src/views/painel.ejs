@@ -1,10 +1,58 @@
 <%- include('partials/head') %>
 <div class="page-header">
   <h1>Olá, <%= firstName %></h1>
+  <a class="button button-primary" href="/bancos/importar">Importar simulado</a>
 </div>
 
-<section class="card empty-state">
-  <h2>Seus simulados vão aparecer aqui</h2>
-  <p class="muted">A importação de questões e os grupos de estudo chegam na próxima entrega.</p>
-</section>
+<div class="stack">
+  <section class="card" aria-labelledby="meus-simulados">
+    <div class="section-title">
+      <h2 id="meus-simulados">Meus simulados</h2>
+    </div>
+    <% if (!panel.mine.length && !panel.received.length) { %>
+      <p class="empty-note">
+        Você ainda não importou nenhum simulado. <a href="/bancos/importar">Importe um arquivo .md</a> gerado no ChatGPT, ou o modelo de exemplo para testar.
+      </p>
+    <% } else { %>
+      <ul class="item-list">
+        <% panel.mine.forEach(function (bank) { %>
+          <%- include('partials/bank-item', {
+            bank,
+            label: bank.sharedWith.length ? 'Compartilhado com ' + formatList(bank.sharedWith) : 'Privado',
+            badgeClass: bank.sharedWith.length ? 'badge-info' : 'badge-muted',
+          }) %>
+        <% }) %>
+        <% panel.received.forEach(function (bank) { %>
+          <%- include('partials/bank-item', {
+            bank,
+            label: 'Recebido de ' + bank.ownerName,
+            badgeClass: 'badge-muted',
+          }) %>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+
+  <% panel.groups.forEach(function (group) { %>
+    <section class="card" aria-label="Grupo <%= group.name %>">
+      <div class="section-title">
+        <h2><%= group.name %></h2>
+        <span class="hint">Grupo de estudo</span>
+      </div>
+      <% if (!group.banks.length) { %>
+        <p class="empty-note">Ninguém compartilhou simulados neste grupo ainda.</p>
+      <% } else { %>
+        <ul class="item-list">
+          <% group.banks.forEach(function (bank) { %>
+            <%- include('partials/bank-item', {
+              bank,
+              label: 'Enviado por ' + bank.ownerName,
+              badgeClass: 'badge-info',
+            }) %>
+          <% }) %>
+        </ul>
+      <% } %>
+    </section>
+  <% }) %>
+</div>
 <%- include('partials/foot') %>

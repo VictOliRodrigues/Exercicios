@@ -1,9 +1,10 @@
 import { eq } from 'drizzle-orm';
-import { Router, type Request, type Response } from 'express';
+import { Router, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import type { AppDeps } from '../../app.js';
 import { users, type UserRow } from '../../db/schema.js';
+import { textField } from '../../http/forms.js';
 import {
   destroySession,
   flash,
@@ -52,11 +53,6 @@ const changePasswordSchema = z
     path: ['confirmacao'],
   });
 
-const textField = (req: Request, name: string, max: number) => {
-  const value: unknown = req.body?.[name];
-  return typeof value === 'string' ? value.trim().slice(0, max) : '';
-};
-
 export function authRoutes({ db, crypto, env }: AppDeps): Router {
   const router = Router();
 
@@ -75,9 +71,12 @@ export function authRoutes({ db, crypto, env }: AppDeps): Router {
       sent: view.sent ?? false,
     });
 
+  // Conta só as tentativas que falham: um grupo de estudo na mesma rede (mesmo IP) pode fazer
+  // muitos logins certos em poucos minutos.
   const loginLimiter = rateLimit({
     windowMs: 15 * 60_000,
     limit: 30,
+    skipSuccessfulRequests: true,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     handler: (req, res) =>

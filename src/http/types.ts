@@ -12,12 +12,20 @@ export interface FlashMessage {
   message: string;
 }
 
+/** Resultado da última importação, mostrado uma vez na página do simulado. Só números e avisos. */
+export interface ImportResult {
+  bankId: string;
+  questionCount: number;
+  warnings: string[];
+}
+
 declare module 'express-session' {
   interface SessionData {
     userId?: string;
     role?: Role;
     sessionVersion?: number;
     flash?: FlashMessage[];
+    importResult?: ImportResult;
   }
 }
 
