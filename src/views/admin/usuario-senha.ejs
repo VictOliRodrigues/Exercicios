@@ -1,0 +1,43 @@
+<%- include('../partials/head') %>
+<a class="back-link" href="/admin/usuarios">← Usuários</a>
+<div class="page-header">
+  <h1>Redefinir senha</h1>
+</div>
+
+<section class="card">
+  <dl class="data-list">
+    <dt>Nome</dt>
+    <dd><%= user.name %></dd>
+    <dt>E-mail (login)</dt>
+    <dd><%= user.email %></dd>
+    <dt>Telefone</dt>
+    <dd><%= formatPhone(user.phone) %></dd>
+  </dl>
+
+  <% if (user.resetRequestedAt) { %>
+    <div class="alert alert-warning" role="status">
+      Pediu a redefinição em <%= formatDateTime(user.resetRequestedAt) %>.
+    </div>
+  <% } %>
+
+  <% if (error) { %>
+    <div class="alert alert-error" role="alert"><%= error %></div>
+  <% } %>
+
+  <form method="post" action="/admin/usuarios/<%= user.id %>/redefinir-senha" class="form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+    <label class="field">
+      <span>Nova senha temporária</span>
+      <input type="text" name="senha" minlength="10" maxlength="200" autocomplete="off" spellcheck="false" required autofocus>
+      <small class="hint">Pelo menos 10 caracteres, ou use “Gerar senha”.</small>
+    </label>
+    <div class="actions">
+      <button type="submit" name="acao" value="digitada" class="button button-primary">Salvar esta senha</button>
+      <button type="submit" name="acao" value="gerar" class="button button-secondary" formnovalidate>Gerar senha</button>
+    </div>
+    <p class="hint">
+      Ao salvar, as sessões abertas são encerradas, o bloqueio por tentativas erradas é zerado e a troca de senha passa a ser obrigatória no próximo acesso.
+    </p>
+  </form>
+</section>
+<%- include('../partials/foot') %>

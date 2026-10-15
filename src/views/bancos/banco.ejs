@@ -1,0 +1,84 @@
+<%- include('../partials/head') %>
+<%
+  let origin;
+  if (isOwner) {
+    origin = sharedGroups.length
+      ? 'Compartilhado com ' + formatList(sharedGroups.map(function (group) { return group.name; }))
+      : 'Privado';
+  } else if (viaGroups.length) {
+    origin = 'Enviado por ' + ownerName + ' em ' + formatList(viaGroups.map(function (group) { return group.name; }));
+  } else {
+    origin = 'Recebido de ' + ownerName;
+  }
+  const sharedIds = sharedGroups.map(function (group) { return group.id; });
+%>
+<a class="back-link" href="/">← Painel</a>
+<div class="page-header">
+  <h1><%= title %></h1>
+  <div class="subtitle item-meta">
+    <span><%= plural(bank.questionCount, 'questão', 'questões') %></span>
+    <span class="badge <%= isOwner && !sharedGroups.length ? 'badge-muted' : 'badge-info' %>"><%= origin %></span>
+    <span>Importado em <%= formatDate(bank.createdAt) %></span>
+  </div>
+</div>
+
+<div class="stack">
+  <% if (importResult) { %>
+    <div class="alert alert-success" role="status">
+      <%= plural(importResult.questionCount, 'questão importada', 'questões importadas') %>.
+    </div>
+    <% if (importResult.warnings.length) { %>
+      <div class="alert alert-warning" role="status">
+        <p class="alert-title">Avisos da importação</p>
+        <ul>
+          <% importResult.warnings.forEach(function (warning) { %><li><%= warning %></li><% }) %>
+        </ul>
+      </div>
+    <% } %>
+  <% } %>
+
+  <section class="card">
+    <h2>Fazer o simulado</h2>
+    <p class="muted">As opções (quantidade de questões e tempo limite) e o botão Iniciar chegam na próxima entrega.</p>
+  </section>
+
+  <% if (isOwner) { %>
+    <section class="card">
+      <h2>Compartilhar com</h2>
+      <% if (!myGroups.length) { %>
+        <p class="empty-note">Você não participa de nenhum grupo de estudo, então o simulado é privado. Quem cria os grupos é o administrador.</p>
+      <% } else { %>
+        <form method="post" action="/bancos/<%= bank.id %>/compartilhamento" class="form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+          <fieldset>
+            <legend class="sr-only">Grupos</legend>
+            <ul class="checkbox-list">
+              <% myGroups.forEach(function (group) { %>
+                <li>
+                  <label>
+                    <input type="checkbox" name="grupos" value="<%= group.id %>"<% if (sharedIds.includes(group.id)) { %> checked<% } %>>
+                    <span><%= group.name %></span>
+                  </label>
+                </li>
+              <% }) %>
+            </ul>
+          </fieldset>
+          <p class="hint">Sem nenhum grupo marcado, o simulado fica privado. Quem já fez continua com ele mesmo que o compartilhamento acabe.</p>
+          <div class="actions">
+            <button type="submit" class="button button-primary">Salvar compartilhamento</button>
+          </div>
+        </form>
+      <% } %>
+    </section>
+
+    <section class="card danger-zone">
+      <h2>Excluir simulado</h2>
+      <p class="muted">O simulado some do seu painel e dos grupos. Quem já fez continua com ele, e os resultados de todos são preservados.</p>
+      <form method="post" action="/bancos/<%= bank.id %>/excluir" class="inline-form" data-confirm="Excluir o simulado <%= title %>? Esta ação não pode ser desfeita.">
+        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+        <button type="submit" class="button button-danger">Excluir simulado</button>
+      </form>
+    </section>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

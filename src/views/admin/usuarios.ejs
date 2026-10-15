@@ -3,10 +3,94 @@
   <h1>Usuários</h1>
 </div>
 
-<section class="card empty-state">
-  <h2>Em construção</h2>
-  <p class="muted">
-    A criação de usuários, os grupos de estudo e os pedidos de "Esqueci minha senha" chegam na próxima entrega.
-  </p>
-</section>
+<div class="stack">
+  <details class="card disclosure"<% if (errors.length) { %> open<% } %>>
+    <summary>Criar usuário</summary>
+    <form method="post" action="/admin/usuarios" class="form form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <% if (errors.length) { %><div class="full"><%- include('../partials/errors', { errors }) %></div><% } %>
+      <label class="field">
+        <span>Nome completo</span>
+        <input type="text" name="nome" value="<%= form.nome %>" maxlength="120" autocomplete="off" required>
+      </label>
+      <label class="field">
+        <span>E-mail</span>
+        <input type="email" name="email" value="<%= form.email %>" maxlength="254" autocomplete="off" required>
+        <small class="hint">É o login.</small>
+      </label>
+      <label class="field">
+        <span>Telefone com DDD</span>
+        <input type="tel" name="telefone" value="<%= form.telefone %>" maxlength="30" inputmode="tel" placeholder="(48) 99999-0000" autocomplete="off" required>
+      </label>
+      <label class="field">
+        <span>Senha inicial</span>
+        <input type="text" name="senha" minlength="10" maxlength="200" autocomplete="off" spellcheck="false" required>
+        <small class="hint">Pelo menos 10 caracteres, ou use “Criar com senha gerada”.</small>
+      </label>
+      <div class="actions">
+        <button type="submit" name="acao" value="digitada" class="button button-primary">Criar com esta senha</button>
+        <button type="submit" name="acao" value="gerar" class="button button-secondary" formnovalidate>Criar com senha gerada</button>
+      </div>
+      <p class="hint full">A troca de senha é obrigatória no primeiro acesso. Envie o e-mail e a senha por fora do sistema.</p>
+    </form>
+  </details>
+
+  <section class="card table-card">
+    <% if (!users.length) { %>
+      <div class="empty-state">
+        <h2>Nenhum usuário cadastrado</h2>
+        <p class="muted">Use “Criar usuário” para cadastrar a primeira pessoa.</p>
+      </div>
+    <% } else { %>
+      <table class="table responsive-table">
+        <thead>
+          <tr>
+            <th scope="col">Nome</th>
+            <th scope="col">E-mail</th>
+            <th scope="col">Telefone</th>
+            <th scope="col">Grupos</th>
+            <th scope="col">Último login</th>
+            <th scope="col">Situação</th>
+            <th scope="col"><span class="sr-only">Ações</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% users.forEach(function (user) { %>
+            <tr<% if (user.resetRequestedAt) { %> class="row-highlight"<% } %>>
+              <td data-label="Nome">
+                <div>
+                  <strong><%= user.name %></strong>
+                  <% if (user.resetRequestedAt) { %>
+                    <span class="cell-note">
+                      <span class="badge badge-warning">Esqueceu a senha</span>
+                      pedido em <%= formatDateTime(user.resetRequestedAt) %>
+                    </span>
+                  <% } %>
+                </div>
+              </td>
+              <td data-label="E-mail" class="break-anywhere"><%= user.email %></td>
+              <td data-label="Telefone" class="nowrap"><%= formatPhone(user.phone) %></td>
+              <td data-label="Grupos"><%= user.groups.length ? formatList(user.groups) : '—' %></td>
+              <td data-label="Último login"><%= user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Nunca entrou' %></td>
+              <td data-label="Situação">
+                <div>
+                  <span class="badge <%= user.active ? 'badge-success' : 'badge-muted' %>"><%= user.active ? 'Ativo' : 'Desativado' %></span>
+                </div>
+              </td>
+              <td class="row-actions"><div class="row-actions-list">
+                <a href="/admin/usuarios/<%= user.id %>">Editar</a>
+                <a href="/admin/usuarios/<%= user.id %>/redefinir-senha"<% if (user.resetRequestedAt) { %> class="button button-primary button-small"<% } %>>Redefinir senha</a>
+                <form method="post" action="/admin/usuarios/<%= user.id %>/ativo" class="inline-form"<% if (user.active) { %> data-confirm="Desativar o acesso de <%= user.name %>? As sessões abertas serão encerradas. Os dados e o histórico ficam guardados."<% } %>>
+                  <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+                  <input type="hidden" name="ativo" value="<%= user.active ? 'false' : 'true' %>">
+                  <button type="submit" class="link-button<%= user.active ? ' link-danger' : '' %>"><%= user.active ? 'Desativar' : 'Reativar' %></button>
+                </form>
+              </div></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</div>
 <%- include('../partials/foot') %>

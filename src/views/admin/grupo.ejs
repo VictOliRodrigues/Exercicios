@@ -1,0 +1,84 @@
+<%- include('../partials/head') %>
+<a class="back-link" href="/admin/grupos">← Grupos</a>
+<div class="page-header">
+  <h1><%= group.name %></h1>
+</div>
+
+<div class="stack">
+  <section class="card">
+    <h2>Nome do grupo</h2>
+    <% if (error) { %>
+      <div class="alert alert-error" role="alert"><%= error %></div>
+    <% } %>
+    <form method="post" action="/admin/grupos/<%= group.id %>" class="inline-fields">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <label class="field">
+        <span class="sr-only">Nome do grupo</span>
+        <input type="text" name="nome" value="<%= nome %>" maxlength="80" autocomplete="off" required>
+      </label>
+      <button type="submit" class="button button-secondary">Renomear</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Membros (<%= members.length %>)</h2>
+    <% if (!members.length) { %>
+      <p class="empty-note">Ninguém participa deste grupo ainda.</p>
+    <% } else { %>
+      <ul class="item-list">
+        <% members.forEach(function (member) { %>
+          <li>
+            <div class="item-main">
+              <div class="item-title"><%= member.name %></div>
+              <div class="item-meta">
+                <span><%= member.email %></span>
+                <% if (!member.active) { %><span class="badge badge-muted">Desativado</span><% } %>
+              </div>
+            </div>
+            <form method="post" action="/admin/grupos/<%= group.id %>/membros/<%= member.id %>/remover" class="inline-form" data-confirm="Remover <%= member.name %> do grupo? Os simulados que essa pessoa compartilhou aqui saem do grupo, e ela perde o acesso aos simulados do grupo que nunca fez.">
+              <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+              <button type="submit" class="button button-secondary button-small">Remover</button>
+            </form>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <h2>Adicionar membros</h2>
+    <% if (!candidates.length) { %>
+      <p class="empty-note">Todos os usuários ativos já participam deste grupo.</p>
+    <% } else { %>
+      <form method="post" action="/admin/grupos/<%= group.id %>/membros" class="form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+        <fieldset>
+          <legend class="sr-only">Usuários ativos fora do grupo</legend>
+          <ul class="checkbox-list">
+            <% candidates.forEach(function (candidate) { %>
+              <li>
+                <label>
+                  <input type="checkbox" name="usuarios" value="<%= candidate.id %>">
+                  <span><%= candidate.name %><small><%= candidate.email %></small></span>
+                </label>
+              </li>
+            <% }) %>
+          </ul>
+        </fieldset>
+        <div class="actions">
+          <button type="submit" class="button button-primary">Adicionar selecionados</button>
+        </div>
+      </form>
+    <% } %>
+  </section>
+
+  <section class="card danger-zone">
+    <h2>Excluir grupo</h2>
+    <p class="muted">Os simulados saem do grupo. O que ficar sem nenhum grupo volta a ser privado de quem enviou. Quem já fez um simulado continua com ele, e os resultados de todos são preservados.</p>
+    <form method="post" action="/admin/grupos/<%= group.id %>/excluir" class="inline-form" data-confirm="Excluir o grupo <%= group.name %>? Esta ação não pode ser desfeita.">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <button type="submit" class="button button-danger">Excluir grupo</button>
+    </form>
+  </section>
+</div>
+<%- include('../partials/foot') %>

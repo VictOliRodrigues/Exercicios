@@ -6,6 +6,7 @@
   <title><%= locals.title ? title + ' · ' + appName : appName %></title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/app.js" defer></script>
 </head>
 <body>
 <% if (locals.currentUser) { %>
@@ -16,12 +17,18 @@
         <span><%= appName %></span>
       </a>
       <% if (!currentUser.mustChangePassword) { %>
+        <%
+          const navPath = locals.currentPath || '';
+          const links = currentUser.role === 'admin'
+            ? [['/admin/usuarios', 'Usuários', navPath.startsWith('/admin/usuarios')],
+               ['/admin/grupos', 'Grupos', navPath.startsWith('/admin/grupos')]]
+            : [['/', 'Painel', navPath === '/'],
+               ['/bancos/importar', 'Importar', navPath === '/bancos/importar']];
+        %>
         <nav class="nav" aria-label="Principal">
-          <% if (currentUser.role === 'admin') { %>
-            <a href="/admin/usuarios">Usuários</a>
-          <% } else { %>
-            <a href="/">Painel</a>
-          <% } %>
+          <% links.forEach(function (link) { %>
+            <a href="<%= link[0] %>"<% if (link[2]) { %> aria-current="page"<% } %>><%= link[1] %></a>
+          <% }) %>
         </nav>
       <% } %>
       <div class="user-menu">

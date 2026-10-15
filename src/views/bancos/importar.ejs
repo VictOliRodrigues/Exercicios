@@ -1,0 +1,88 @@
+<%- include('../partials/head') %>
+<div class="page-header">
+  <h1>Importar simulado</h1>
+</div>
+
+<div class="stack">
+  <% if (issues.length) { %>
+    <section class="card" aria-labelledby="erros-titulo">
+      <div class="alert alert-error" role="alert">
+        <p class="alert-title" id="erros-titulo">
+          Não foi possível importar: <%= plural(issues.length, 'problema encontrado', 'problemas encontrados') %>. Nada foi gravado.
+        </p>
+        <ul>
+          <% issues.forEach(function (issue) { %><li><%= issue %></li><% }) %>
+        </ul>
+      </div>
+      <h2>Mensagem para o ChatGPT</h2>
+      <p class="muted">Cole esta mensagem na mesma conversa em que as questões foram geradas e importe o arquivo corrigido.</p>
+      <textarea class="code-box" id="mensagem-gpt" rows="12" readonly aria-label="Mensagem para o ChatGPT"><%= gptMessage %></textarea>
+      <button type="button" class="button button-primary" data-copy="mensagem-gpt">Copiar mensagem</button>
+    </section>
+  <% } %>
+
+  <section class="card">
+    <h2>Arquivo de questões</h2>
+    <% if (fileError) { %>
+      <div class="alert alert-error" role="alert"><%= fileError %></div>
+    <% } %>
+    <form method="post" action="/bancos" enctype="multipart/form-data" class="form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <label class="field">
+        <span>Arquivo .md</span>
+        <input type="file" name="arquivo" accept=".md,text/markdown" required>
+        <small class="hint">Até <%= maxUploadLabel %>, em UTF-8.</small>
+      </label>
+
+      <fieldset>
+        <legend>Compartilhar com</legend>
+        <% if (!myGroups.length) { %>
+          <p class="hint">Você ainda não participa de nenhum grupo de estudo, então o simulado fica privado. Quem cria os grupos é o administrador.</p>
+        <% } else { %>
+          <ul class="checkbox-list">
+            <% myGroups.forEach(function (group) { %>
+              <li>
+                <label>
+                  <input type="checkbox" name="grupos" value="<%= group.id %>"<% if (selectedGroups.includes(group.id)) { %> checked<% } %>>
+                  <span><%= group.name %></span>
+                </label>
+              </li>
+            <% }) %>
+          </ul>
+          <p class="hint">Sem nenhum grupo marcado, o simulado fica privado: só você vê.</p>
+        <% } %>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit" class="button button-primary">Importar</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Como gerar as questões no ChatGPT</h2>
+    <ol class="steps">
+      <li>
+        <strong>Cole o prompt abaixo no ChatGPT.</strong>
+        <p class="muted">Ele só explica o formato do arquivo, para a importação não falhar.</p>
+        <pre class="code-box" id="prompt-chatgpt"><%= promptText %></pre>
+        <div class="actions">
+          <button type="button" class="button button-primary" data-copy="prompt-chatgpt">Copiar prompt</button>
+          <a class="button button-secondary" href="/modelos/prompt-chatgpt.txt">Baixar prompt (.txt)</a>
+        </div>
+      </li>
+      <li>
+        <strong>Peça as questões.</strong>
+        <p class="muted">Diga o assunto e a quantidade, e mande suas anotações em texto, imagem ou PDF.</p>
+      </li>
+      <li>
+        <strong>Baixe o arquivo .md e importe aqui.</strong>
+        <p class="muted">Se der erro, esta página monta uma mensagem pronta para o ChatGPT corrigir o arquivo.</p>
+      </li>
+    </ol>
+    <h2 class="section-break">Modelo</h2>
+    <p class="muted">Um simulado de 5 questões com todos os recursos do formato (código, lista de afirmativas, tabela). Pode ser importado direto para testar.</p>
+    <a class="button button-secondary" href="/modelos/modelo-questoes.md">Baixar modelo (.md)</a>
+  </section>
+</div>
+<%- include('../partials/foot') %>

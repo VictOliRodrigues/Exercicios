@@ -1,0 +1,30 @@
+<%- include('../partials/head') %>
+<a class="back-link" href="/admin/usuarios">← Usuários</a>
+<div class="page-header">
+  <h1>Editar usuário</h1>
+</div>
+
+<section class="card">
+  <form method="post" action="/admin/usuarios/<%= userId %>" class="form form-grid">
+    <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+    <% if (errors.length) { %><div class="full"><%- include('../partials/errors', { errors }) %></div><% } %>
+    <label class="field full">
+      <span>Nome completo</span>
+      <input type="text" name="nome" value="<%= form.nome %>" maxlength="120" autocomplete="off" required>
+    </label>
+    <label class="field">
+      <span>E-mail</span>
+      <input type="email" name="email" value="<%= form.email %>" maxlength="254" autocomplete="off" required>
+      <small class="hint">Atenção: trocar o e-mail troca o login.</small>
+    </label>
+    <label class="field">
+      <span>Telefone com DDD</span>
+      <input type="tel" name="telefone" value="<%= form.telefone %>" maxlength="30" inputmode="tel" autocomplete="off" required>
+    </label>
+    <div class="actions">
+      <button type="submit" class="button button-primary">Salvar</button>
+      <a class="button button-secondary" href="/admin/usuarios">Cancelar</a>
+    </div>
+  </form>
+</section>
+<%- include('../partials/foot') %>
