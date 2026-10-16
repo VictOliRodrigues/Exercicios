@@ -1,9 +1,9 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { Router, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import type { AppDeps } from '../../app.js';
-import { users, type UserRow } from '../../db/schema.js';
+import { users } from '../../db/schema.js';
 import { textField } from '../../http/forms.js';
 import {
   destroySession,
@@ -97,16 +97,40 @@ export function authRoutes({ db, crypto, env }: AppDeps): Router {
       renderForgot(res, 429, { error: 'Muitos pedidos a partir desta rede. Tente mais tarde.' }),
   });
 
-  async function registerFailedLogin(user: UserRow, now: Date) {
-    const failures = user.failedLogins + 1;
-    const lock = failures >= env.LOGIN_MAX_FAILS;
-    await db
-      .update(users)
-      .set({
-        failedLogins: lock ? 0 : failures,
-        lockedUntil: lock ? new Date(now.getTime() + env.LOGIN_LOCK_MINUTES * 60_000) : null,
-      })
-      .where(eq(users.id, user.id));
+  // Com a sessão de outra pessoa nas mãos, não dá para testar a senha atual à vontade.
+  const changePasswordLimiter = rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 10,
+    skipSuccessfulRequests: true,
+    keyGenerator: (req) => req.currentUser!.id,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    handler: (req, res) =>
+      res.status(429).render('auth/alterar-senha', {
+        title: 'Alterar senha',
+        errors: ['Muitas tentativas. Aguarde alguns minutos e tente de novo.'],
+        forced: req.currentUser!.mustChangePassword,
+      }),
+  });
+
+  /**
+   * Conta a tentativa antes de conferir a senha, numa única instrução no banco. A tentativa que
+   * completa o limite já bloqueia a conta (e um login certo nela desbloqueia). Assim, pedidos
+   * simultâneos não passam do limite. Devolve false se a conta está bloqueada.
+   */
+  async function reserveLoginAttempt(userId: string, now: Date): Promise<boolean> {
+    const lockUntil = new Date(now.getTime() + env.LOGIN_LOCK_MINUTES * 60_000);
+    const reachesLimit = sql`${users.failedLogins} + 1 >= ${env.LOGIN_MAX_FAILS}`;
+    // O MySQL aplica as atribuições da esquerda para a direita: locked_until vem antes para ainda
+    // ver a contagem antiga.
+    const [result] = await db.execute(sql`
+      update ${users}
+      set ${users.lockedUntil} = if(${reachesLimit}, ${lockUntil}, ${users.lockedUntil}),
+          ${users.failedLogins} = if(${reachesLimit}, 0, ${users.failedLogins} + 1)
+      where ${users.id} = ${userId}
+        and (${users.lockedUntil} is null or ${users.lockedUntil} <= ${now})
+    `);
+    return result.affectedRows > 0;
   }
 
   router.get('/login', (req, res) => {
@@ -123,15 +147,13 @@ export function authRoutes({ db, crypto, env }: AppDeps): Router {
     const now = new Date();
     const user = await findUserByEmail(db, crypto, email);
 
-    if (!user || (user.lockedUntil && user.lockedUntil > now)) {
+    if (!user || !(await reserveLoginAttempt(user.id, now))) {
       await spendPasswordCheck(senha);
       return renderLogin(res, 401, typedEmail, INVALID_LOGIN);
     }
-    if (!(await verifyPassword(user.passwordHash, senha))) {
-      await registerFailedLogin(user, now);
+    if (!(await verifyPassword(user.passwordHash, senha)) || !user.active) {
       return renderLogin(res, 401, typedEmail, INVALID_LOGIN);
     }
-    if (!user.active) return renderLogin(res, 401, typedEmail, INVALID_LOGIN);
 
     await db
       .update(users)
@@ -179,7 +201,7 @@ export function authRoutes({ db, crypto, env }: AppDeps): Router {
     });
   });
 
-  router.post('/alterar-senha', requireAuth, async (req, res) => {
+  router.post('/alterar-senha', requireAuth, changePasswordLimiter, async (req, res) => {
     const current = req.currentUser!;
     const renderErrors = (errors: string[]) =>
       res.status(422).render('auth/alterar-senha', {

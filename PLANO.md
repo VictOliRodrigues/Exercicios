@@ -492,23 +492,24 @@ No login e no "Esqueci minha senha", o servidor calcula o HMAC do que foi digita
 
 ## 9. Checklist de segurança
 
-- [ ] Segredos ficam só no `.env` (ou nas variáveis do Coolify). `.env` está no `.gitignore`, e o `.env.example` não tem valores reais.
-- [ ] O `.env` é validado com zod na subida, e o app não sobe se faltar alguma variável.
-- [ ] HTTPS fica a cargo do proxy do Coolify, com `app.set('trust proxy', 1)`.
-- [ ] Cookie de sessão `httpOnly`, `Secure`, `SameSite=Lax` e com nome próprio. A sessão é regenerada no login e expira após 8 h **sem uso**, renovando a cada requisição.
-- [ ] A cada requisição, o app confere `active`, `must_change_password` e `session_version`. Redefinir senha, trocar senha ou desativar o usuário derruba as sessões dele.
-- [ ] Token CSRF em todo `POST` de formulário e no cabeçalho dos `fetch`.
-- [ ] Login com mensagem genérica, limite de tentativas erradas por IP (os logins certos não contam, porque um grupo na mesma rede divide o IP) e bloqueio de 15 min após 5 falhas. O Argon2 roda mesmo quando o e-mail não existe, para o tempo de resposta não revelar quem está cadastrado.
-- [ ] "Esqueci minha senha" sempre dá a mesma resposta e tem limite por IP.
-- [ ] Middleware por perfil. Toda consulta de simulado passa por uma única função de permissão (dono, membro de um grupo compartilhado ou quem já fez; a regra está na [seção 7](#7-modelo-de-dados)). Ações de dono checam o dono. Recurso alheio e rota de outro perfil respondem 404.
-- [ ] Ao importar ou mudar o compartilhamento, o servidor confere se o usuário é membro de todos os grupos escolhidos.
-- [ ] XSS: Markdown sem HTML cru + `rehype-sanitize` na importação; EJS sempre com escape (`<%= %>`). Só o HTML de questão já sanitizado usa `<%- %>`.
-- [ ] CSP via helmet: `default-src 'self'`, nenhum script inline (todo o JS em arquivos) e `img-src 'self' data:`.
-- [ ] Upload: até 1 MB, só `.md`, só UTF-8 e nunca usar o nome original no disco. O volume fica fora da pasta pública.
-- [ ] O gabarito **nunca** vai para o navegador durante a prova. A correção e o tempo limite são validados no servidor.
-- [ ] O usuário MySQL da aplicação não é root e só tem acesso ao banco do app.
-- [ ] O app roda como usuário não-root. O entrypoint começa como root só para ajustar o dono do volume (que o Coolify monta como root) e passa para o usuário `node`.
-- [ ] `npm audit` antes de cada deploy e versões exatas no `package.json`.
+- [x] Segredos ficam só no `.env` (ou nas variáveis do Coolify). `.env` está no `.gitignore`, e o `.env.example` não tem valores reais.
+- [x] O `.env` é validado com zod na subida, e o app não sobe se faltar alguma variável.
+- [ ] HTTPS fica a cargo do proxy do Coolify, com `app.set('trust proxy', 1)`. *Código pronto; falta conferir no ar.*
+- [x] Cookie de sessão `httpOnly`, `Secure`, `SameSite=Lax` e com nome próprio. A sessão é regenerada no login e expira após 8 h **sem uso**, renovando a cada requisição.
+- [x] A cada requisição, o app confere `active`, `must_change_password` e `session_version`. Redefinir senha, trocar senha ou desativar o usuário derruba as sessões dele.
+- [x] Token CSRF em todo `POST` de formulário e no cabeçalho dos `fetch`.
+- [x] Login com mensagem genérica, limite de tentativas erradas por IP (os logins certos não contam, porque um grupo na mesma rede divide o IP) e bloqueio de 15 min após 5 falhas, contado numa única instrução no banco para pedidos simultâneos não passarem do limite. O Argon2 roda mesmo quando o e-mail não existe, para o tempo de resposta não revelar quem está cadastrado.
+- [x] "Esqueci minha senha" sempre dá a mesma resposta e tem limite por IP.
+- [x] "Alterar senha" aceita no máximo 10 senhas atuais erradas por usuário a cada 15 min.
+- [x] Middleware por perfil. Toda consulta de simulado passa por uma única função de permissão (dono, membro de um grupo compartilhado ou quem já fez; a regra está na [seção 7](#7-modelo-de-dados)). Ações de dono checam o dono. Recurso alheio e rota de outro perfil respondem 404.
+- [x] Ao importar ou mudar o compartilhamento, o servidor confere se o usuário é membro de todos os grupos escolhidos.
+- [x] XSS: Markdown sem HTML cru + `rehype-sanitize` na importação; EJS sempre com escape (`<%= %>`). Só o HTML de questão já sanitizado usa `<%- %>`.
+- [x] CSP via helmet: `default-src 'self'`, nenhum script inline (todo o JS em arquivos), `img-src 'self' data:` e `frame-ancestors 'none'` (nenhuma página abre dentro de outro site).
+- [x] Upload: até 1 MB, só `.md`, só UTF-8 e nunca usar o nome original no disco. O volume fica fora da pasta pública.
+- [x] O gabarito **nunca** vai para o navegador durante a prova. A correção e o tempo limite são validados no servidor.
+- [ ] O usuário MySQL da aplicação não é root e só tem acesso ao banco do app. No Coolify, é o usuário comum criado com o database. *Falta conferir no ar.*
+- [x] O app roda como usuário não-root. O entrypoint começa como root só para ajustar o dono do volume (que o Coolify monta como root) e passa para o usuário `node`.
+- [x] `npm audit --omit=dev` antes de cada deploy e versões exatas no `package.json`. O `mysql2` antigo que vinha dentro do `express-mysql-session` foi trocado pelo do projeto (`overrides`).
 
 ---
 
@@ -585,7 +586,7 @@ simulados/
 5. **Domínio + HTTPS**: o proxy do Coolify cuida disso, com Let's Encrypt.
 6. **Healthcheck**: apontar para `GET /health`. O healthcheck do Coolify depende do `curl`, que precisa ser instalado na imagem final.
 7. **Na subida**, o container roda migrations e depois o seed do admin. Os dois são idempotentes: o seed só cria o admin se ele ainda não existir, já com troca de senha obrigatória.
-8. **Backups**: banco (Coolify), volume `/app/storage` e a `ENCRYPTION_KEY`, esta guardada **separada** dos outros dois.
+8. **Backups**: banco (Coolify), volume `/app/storage` e a `ENCRYPTION_KEY`, esta guardada **separada** dos outros dois. Depois de restaurar, `npm run data:check` no terminal do container decifra tudo e confirma que banco, volume e chave combinam. O passo a passo está no [README.md](README.md#backups).
 
 O [Dockerfile](Dockerfile) está na raiz do projeto. Ele usa `node:24-bookworm-slim` em vez de `alpine` para evitar problema com o binário nativo do `argon2`, que no Alpine usa musl, e já define o `HEALTHCHECK`.
 
@@ -608,7 +609,7 @@ As fases são entregues em 4 blocos. Cada bloco termina com algo que dá para te
 | 1. Fundação + deploy | 0, 1 e 2, e publicar no Coolify | código pronto e testado localmente, inclusive a imagem Docker; falta publicar |
 | 2. Admin + importação | 3 e 4 | código pronto e testado localmente (101 testes) |
 | 3. Prova + relatório | 5 e 6 | código pronto e testado localmente (140 testes) e conferido no navegador (desktop, celular, tema escuro) |
-| 4. Revisão final | 7 | — |
+| 4. Revisão final | 7 | revisão da seção 9 feita (143 testes); imagem testada localmente: redeploy e restauração de backup conferidos com `npm run data:check`; falta publicar no Coolify |
 
 | Fase | Entrega | Pronto quando |
 |---|---|---|

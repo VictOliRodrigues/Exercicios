@@ -19,7 +19,8 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
     "keys:generate": "tsx scripts/generate-keys.ts",
-    "admin:reset-password": "node dist/scripts/admin-reset-password.js"
+    "admin:reset-password": "node dist/scripts/admin-reset-password.js",
+    "data:check": "node dist/scripts/check-data.js"
   },
   "dependencies": {
     "argon2": "0.45.1",
@@ -61,5 +62,13 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.0",
     "vitest": "5.0.3"
+  },
+  "overrides": {
+    "express-mysql-session": {
+      "mysql2": "$mysql2"
+    },
+    "@types/express-mysql-session": {
+      "mysql2": "$mysql2"
+    }
   }
 }

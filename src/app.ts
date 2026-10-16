@@ -39,15 +39,19 @@ export function createApp(deps: AppDeps) {
   app.locals.appName = 'Simulados';
   Object.assign(app.locals, viewHelpers);
 
+  // O padrão do helmet já traz default-src 'self', script-src 'self', img-src 'self' data: e HSTS.
+  // Nenhuma página é feita para ser aberta dentro de outro site: frame-ancestors 'none'.
   app.use(
     helmet({
       contentSecurityPolicy: {
         directives: {
           styleSrc: ["'self'"],
           fontSrc: ["'self'"],
+          frameAncestors: ["'none'"],
           upgradeInsecureRequests: production ? [] : null,
         },
       },
+      frameguard: { action: 'deny' },
     }),
   );
   app.use(

@@ -72,6 +72,8 @@ describe('páginas públicas', () => {
   it('envia os cabeçalhos de segurança', async () => {
     const res = await request(ctx.app).get('/login');
     expect(res.headers['content-security-policy']).toContain("default-src 'self'");
+    expect(res.headers['content-security-policy']).toContain("frame-ancestors 'none'");
+    expect(res.headers['x-frame-options']).toBe('DENY');
     expect(res.headers['cache-control']).toBe('no-store');
     expect(res.headers['x-powered-by']).toBeUndefined();
   });
@@ -105,6 +107,31 @@ describe('login', () => {
     const res = await login(agent(), 'maria@exemplo.com', PASSWORD);
     expect(res.status).toBe(401);
     expect((await userRow(id)).lockedUntil).not.toBeNull();
+  });
+
+  it('tentativas simultâneas não passam do limite antes do bloqueio', async () => {
+    const id = await addUser();
+    const attacker = agent();
+    const _csrf = await csrfFrom(attacker, '/login');
+    await Promise.all(
+      Array.from({ length: 8 }, () =>
+        attacker
+          .post('/login')
+          .type('form')
+          .send({ _csrf, email: 'maria@exemplo.com', senha: 'senha-errada' }),
+      ),
+    );
+    expect((await userRow(id)).lockedUntil).not.toBeNull();
+    expect((await login(agent(), 'maria@exemplo.com', PASSWORD)).status).toBe(401);
+  });
+
+  it('a senha certa na última tentativa antes do bloqueio entra e zera a contagem', async () => {
+    const id = await addUser();
+    for (let i = 0; i < 4; i++) await login(agent(), 'maria@exemplo.com', 'senha-errada');
+    expect((await login(agent(), 'maria@exemplo.com', PASSWORD)).status).toBe(302);
+    const row = await userRow(id);
+    expect(row.failedLogins).toBe(0);
+    expect(row.lockedUntil).toBeNull();
   });
 
   it('usuário desativado não entra', async () => {
@@ -192,6 +219,24 @@ describe('troca de senha obrigatória', () => {
 
     expect((await phone.get('/')).status).toBe(200);
     expect((await laptop.get('/')).headers.location).toBe('/login');
+  });
+
+  it('limita as tentativas com a senha atual errada', async () => {
+    await addUser();
+    const user = agent();
+    await login(user, 'maria@exemplo.com', PASSWORD);
+    const _csrf = await csrfFrom(user, '/alterar-senha');
+    const attempt = () =>
+      user.post('/alterar-senha').type('form').send({
+        _csrf,
+        senhaAtual: 'chute-errado',
+        novaSenha: 'nova-senha-segura',
+        confirmacao: 'nova-senha-segura',
+      });
+    for (let i = 0; i < 10; i++) expect((await attempt()).status).toBe(422);
+    const blocked = await attempt();
+    expect(blocked.status).toBe(429);
+    expect(blocked.text).toContain('Muitas tentativas');
   });
 });
 
