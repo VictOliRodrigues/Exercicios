@@ -2,18 +2,20 @@
 
 const TIME_ZONE = 'America/Sao_Paulo';
 
-const dateTimeFormat = new Intl.DateTimeFormat('pt-BR', {
-  timeZone: TIME_ZONE,
-  dateStyle: 'short',
-  timeStyle: 'short',
-});
-
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, dateStyle: 'short' });
+
+const timeFormat = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, timeStyle: 'short' });
 
 const listFormat = new Intl.ListFormat('pt-BR', { style: 'long', type: 'conjunction' });
 
+/** 15/10/2026 08:32 */
 export function formatDateTime(value: Date | null | undefined): string {
-  return value ? dateTimeFormat.format(value) : '';
+  return value ? `${dateFormat.format(value)} ${timeFormat.format(value)}` : '';
+}
+
+/** 15/10/2026 às 08:32 */
+export function formatDateTimeAt(value: Date | null | undefined): string {
+  return value ? `${dateFormat.format(value)} às ${timeFormat.format(value)}` : '';
 }
 
 export function formatDate(value: Date | null | undefined): string {
@@ -89,6 +91,7 @@ export function formatClock(totalSeconds: number): string {
 
 export const viewHelpers = {
   formatDateTime,
+  formatDateTimeAt,
   formatDate,
   formatList,
   formatPhone,

@@ -1,0 +1,54 @@
+<dialog class="modal modal-wide" open aria-labelledby="modal-titulo" data-close-href="/admin/usuarios">
+  <%# "Gerar senha" usa um formulário à parte: assim o Enter no campo salva a senha digitada. %>
+  <form id="form-gerar-senha" method="post" action="/admin/usuarios/<%= modal.user.id %>/redefinir-senha" hidden>
+    <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+    <input type="hidden" name="acao" value="gerar">
+  </form>
+  <form method="post" action="/admin/usuarios/<%= modal.user.id %>/redefinir-senha">
+    <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+    <input type="hidden" name="acao" value="digitada">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-titulo">Redefinir senha</h2>
+      <a class="modal-close" href="/admin/usuarios" aria-label="Fechar"><%- include('../../partials/icon', { iconName: 'x' }) %></a>
+    </div>
+    <div class="modal-body">
+      <div class="person-card">
+        <p class="person-card-head">
+          <span><%= modal.user.name %></span>
+          <% if (modal.user.resetRequestedAt) { %><span class="tag tag-warning">Esqueceu a senha</span><% } %>
+        </p>
+        <dl>
+          <div>
+            <dt class="caps-label">E-mail</dt>
+            <dd><%= modal.user.email %></dd>
+          </div>
+          <div>
+            <dt class="caps-label">Telefone</dt>
+            <dd><%= formatPhone(modal.user.phone) %></dd>
+          </div>
+          <% if (modal.user.resetRequestedAt) { %>
+            <div>
+              <dt class="caps-label">Pedido em</dt>
+              <dd><%= formatDateTimeAt(modal.user.resetRequestedAt) %></dd>
+            </div>
+          <% } %>
+        </dl>
+      </div>
+      <%- include('../../partials/errors', { errors: modal.error ? [modal.error] : [] }) %>
+      <label class="field">
+        <span>Nova senha temporária</span>
+        <input type="text" name="senha" minlength="10" maxlength="200" autocomplete="off" spellcheck="false" required autofocus>
+        <small class="hint">Pelo menos 10 caracteres. Passe a senha para a pessoa por um canal seguro.</small>
+      </label>
+      <div class="alert alert-info alert-with-icon">
+        <%- include('../../partials/alert-icon', { icon: 'info' }) %>
+        <span>Ao salvar, todas as sessões abertas dessa pessoa são encerradas e o bloqueio por tentativas erradas é zerado. No próximo acesso, ela entra com a senha temporária e é obrigada a definir uma nova senha.</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <a class="button button-secondary" href="/admin/usuarios">Cancelar</a>
+      <button type="submit" form="form-gerar-senha" class="button button-secondary">Gerar senha</button>
+      <button type="submit" class="button button-primary">Salvar esta senha</button>
+    </div>
+  </form>
+</dialog>

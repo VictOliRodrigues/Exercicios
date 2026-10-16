@@ -1,0 +1,32 @@
+<dialog class="modal" open aria-labelledby="modal-titulo" data-close-href="/admin/usuarios">
+  <form method="post" action="/admin/usuarios/<%= modal.userId %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-titulo">Editar usuário</h2>
+      <a class="modal-close" href="/admin/usuarios" aria-label="Fechar"><%- include('../../partials/icon', { iconName: 'x' }) %></a>
+    </div>
+    <div class="modal-body">
+      <%- include('../../partials/errors', { errors: modal.errors }) %>
+      <label class="field">
+        <span>Nome completo</span>
+        <input type="text" name="nome" value="<%= modal.form.nome %>" maxlength="120" autocomplete="off" required autofocus>
+      </label>
+      <div class="field">
+        <label for="editar-email">E-mail</label>
+        <input type="email" id="editar-email" name="email" value="<%= modal.form.email %>" maxlength="254" autocomplete="off" aria-describedby="editar-email-aviso" required>
+        <div class="alert alert-warning alert-note alert-with-icon" id="editar-email-aviso">
+          <%- include('../../partials/alert-icon', { icon: 'warning' }) %>
+          <span>Trocar o e-mail troca o login: a pessoa passa a entrar com o novo endereço.</span>
+        </div>
+      </div>
+      <label class="field">
+        <span>Telefone com DDD</span>
+        <input type="tel" name="telefone" value="<%= modal.form.telefone %>" maxlength="30" inputmode="tel" autocomplete="off" required>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <a class="button button-secondary" href="/admin/usuarios">Cancelar</a>
+      <button type="submit" class="button button-primary">Salvar</button>
+    </div>
+  </form>
+</dialog>

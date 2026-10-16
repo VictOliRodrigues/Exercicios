@@ -1,4 +1,4 @@
-import { Router, type Request } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import type { AppDeps } from '../../app.js';
 import { isUuid } from '../../http/forms.js';
@@ -53,6 +53,14 @@ function startOptionsSchema(total: number) {
   });
 }
 
+/** Com "Todas" ou "Sem limite" marcado, o número ao lado (que sempre vem preenchido) não vale. */
+function startOptionsFrom(body: Record<string, unknown> = {}) {
+  return {
+    quantidade: body.modoQuantidade === 'todas' ? undefined : body.quantidade,
+    minutos: body.modoTempo === 'sem-limite' ? undefined : body.minutos,
+  };
+}
+
 const positiveInt = (value: unknown) => {
   const number = typeof value === 'string' && /^\d{1,6}$/.test(value) ? Number(value) : NaN;
   return number >= 1 ? number : null;
@@ -95,13 +103,31 @@ export function attemptRoutes({ db, crypto }: AppDeps): Router {
     };
   };
 
+  async function renderExam(
+    res: Response,
+    attempt: AttemptRow,
+    page: number,
+    blankModal: { blanks: number[] } | null = null,
+  ) {
+    res.render('simulados/prova', {
+      title: await findBankTitle(db, crypto, attempt.bankId),
+      attempt: { id: attempt.id, bankId: attempt.bankId },
+      exam: await loadExamPage(db, crypto, attempt.id, page),
+      clock: clockOf(attempt),
+      letterLabel,
+      blankModal,
+    });
+  }
+
   router.post('/bancos/:id/simulados', ...userOnly, async (req, res) => {
     const access = isUuid(req.params.id)
       ? await findBankAccess(db, crypto, req.currentUser!.id, req.params.id)
       : null;
     if (!access) return renderNotFound(req, res);
 
-    const parsed = startOptionsSchema(access.bank.questionCount).safeParse(req.body ?? {});
+    const parsed = startOptionsSchema(access.bank.questionCount).safeParse(
+      startOptionsFrom(req.body),
+    );
     if (!parsed.success) {
       flash(req, 'error', parsed.error.issues[0]!.message);
       return res.redirect(`/bancos/${access.bank.id}`);
@@ -120,14 +146,7 @@ export function attemptRoutes({ db, crypto }: AppDeps): Router {
     if (!attempt) return renderNotFound(req, res);
     if (await settleIfExpired(db, crypto, attempt)) return res.redirect(reportPath(attempt));
 
-    const exam = await loadExamPage(db, crypto, attempt.id, positiveInt(req.query.pagina) ?? 1);
-    res.render('simulados/prova', {
-      title: await findBankTitle(db, crypto, attempt.bankId),
-      attempt: { id: attempt.id, bankId: attempt.bankId },
-      exam,
-      clock: clockOf(attempt),
-      letterLabel,
-    });
+    await renderExam(res, attempt, positiveInt(req.query.pagina) ?? 1);
   });
 
   /** Salva as respostas do formulário; se o prazo venceu, finaliza e avisa o que não foi salvo. */
@@ -188,15 +207,10 @@ export function attemptRoutes({ db, crypto }: AppDeps): Router {
       return res.redirect(reportPath(attempt));
     }
 
+    // Com questões em branco, a prova volta (na última página) com a janela de confirmação.
     const blanks = await listBlankNumbers(db, attempt.id);
     if (blanks.length && req.body?.confirmar !== '1') {
-      return res.render('simulados/confirmar', {
-        title: await findBankTitle(db, crypto, attempt.bankId),
-        attempt: { id: attempt.id },
-        blanks,
-        clock: clockOf(attempt),
-        returnPage: await lastPage(db, attempt.id),
-      });
+      return renderExam(res, attempt, await lastPage(db, attempt.id), { blanks });
     }
     await finishAttempt(db, crypto, attempt.id, 'user');
     res.redirect(reportPath(attempt));

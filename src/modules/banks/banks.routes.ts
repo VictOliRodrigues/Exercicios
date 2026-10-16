@@ -7,7 +7,7 @@ import type { Env } from '../../config/env.js';
 import { idListField, isUuid } from '../../http/forms.js';
 import { flash, renderNotFound, userOnly } from '../../http/session.js';
 import { buildGptFixMessage } from '../../markdown/gpt-fix-message.js';
-import { describeIssue, parseQuestions } from '../../markdown/parse-questions.js';
+import { parseQuestions } from '../../markdown/parse-questions.js';
 import { MAX_TIME_LIMIT_MINUTES } from '../attempts/attempts.routes.js';
 import { listAttemptsForBank, settleExpiredAttempts } from '../attempts/attempts.service.js';
 import { listGroupsOfUser, type GroupSummary } from '../groups/groups.service.js';
@@ -82,10 +82,17 @@ function titleFromFileName(name: string): string {
   return (base || 'Simulado sem título').slice(0, TITLE_MAX_LENGTH);
 }
 
+/** Problema do arquivo, como a tela mostra: "Questão 4 · linha 37" e o detalhe. */
+interface IssueView {
+  question: number | null;
+  line: number | null;
+  detail: string;
+}
+
 interface ImportView {
   selectedGroups?: string[];
   fileError?: string | null;
-  issues?: string[];
+  issues?: IssueView[];
   gptMessage?: string | null;
 }
 
@@ -155,7 +162,7 @@ export function bankRoutes({ db, crypto, env, fileStore }: AppDeps): Router {
     const parsed = parseQuestions(text);
     if (parsed.errors.length) {
       return fail(422, {
-        issues: parsed.errors.map(describeIssue),
+        issues: parsed.errors.map(({ question, line, detail }) => ({ question, line, detail })),
         gptMessage: buildGptFixMessage(parsed.errors),
       });
     }

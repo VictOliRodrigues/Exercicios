@@ -9,19 +9,26 @@
        <% if (clock.remaining !== null) { %>data-remaining="<%= clock.remaining %>"<% } %>
        data-finish-form="<%= finishForm %>"
        data-finish-url="/simulados/<%= attempt.id %>/finalizar">
-    <span class="exam-stat">
-      <span class="exam-stat-label">Tempo</span>
-      <strong class="exam-clock" data-clock-elapsed><%= formatClock(clock.elapsed) %></strong>
-    </span>
-    <% if (clock.remaining !== null) { %>
-      <span class="exam-stat exam-remaining<% if (clock.remaining <= 300) { %> is-urgent<% } %>" data-clock-remaining-box>
-        <span class="exam-stat-label">Restante</span>
-        <strong class="exam-clock" data-clock-remaining><%= formatClock(clock.remaining) %></strong>
-      </span>
-    <% } %>
-    <% if (locals.exam) { %>
-      <span class="exam-stat">Página <%= exam.page %> de <%= exam.pageCount %></span>
-      <span class="exam-stat"><span><strong data-answered-count><%= exam.answered %></strong>/<%= exam.total %> respondidas</span></span>
-    <% } %>
+    <h1 class="exam-title"><%= title %></h1>
+    <dl class="exam-stats">
+      <div class="exam-stat">
+        <dt class="exam-stat-label">Tempo decorrido</dt>
+        <dd class="exam-clock" data-clock-elapsed><%= formatClock(clock.elapsed) %></dd>
+      </div>
+      <% if (clock.remaining !== null) { %>
+        <div class="exam-stat exam-remaining<% if (clock.remaining <= 300) { %> is-urgent<% } %>" data-clock-remaining-box>
+          <dt class="exam-stat-label">Tempo restante</dt>
+          <dd class="exam-clock" data-clock-remaining><%= formatClock(clock.remaining) %></dd>
+        </div>
+      <% } %>
+      <div class="exam-stat">
+        <dt class="exam-stat-label">Página</dt>
+        <dd class="exam-stat-value"><%= exam.page %> de <%= exam.pageCount %></dd>
+      </div>
+      <div class="exam-stat">
+        <dt class="exam-stat-label">Respondidas</dt>
+        <dd class="exam-stat-value"><span data-answered-count><%= exam.answered %></span>/<%= exam.total %></dd>
+      </div>
+    </dl>
   </div>
 </div>

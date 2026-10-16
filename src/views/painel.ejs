@@ -1,54 +1,63 @@
-<%- include('partials/head') %>
+<%- include('partials/head', { pageWidth: 1040 }) %>
 <div class="page-header">
-  <h1>Olá, <%= firstName %></h1>
-  <a class="button button-primary" href="/bancos/importar">Importar simulado</a>
+  <h1 class="title-lg">Olá, <%= firstName %></h1>
+  <a class="button button-primary" href="/bancos/importar">
+    <%- include('partials/icon', { iconName: 'download', iconClass: 'button-icon' }) %>
+    Importar simulado
+  </a>
 </div>
 
 <div class="stack">
   <% if (attempts.inProgress.length) { %>
-    <section class="card" aria-labelledby="em-andamento">
-      <div class="section-title">
+    <section class="card list-card" aria-labelledby="em-andamento">
+      <div class="list-card-header">
         <h2 id="em-andamento">Em andamento</h2>
+        <span class="list-card-count"><%= plural(attempts.inProgress.length, 'tentativa', 'tentativas') %></span>
       </div>
-      <ul class="item-list">
+      <ul class="list-card-rows">
         <% attempts.inProgress.forEach(function (attempt) { %>
+          <% const progressLabel = attempt.answered + ' de ' + attempt.totalQuestions + ' respondidas'; %>
           <li>
-            <div class="item-main">
-              <a class="item-title" href="/simulados/<%= attempt.id %>"><%= attempt.title %></a>
-              <div class="item-meta">
-                <span>Iniciado em <%= formatDateTime(attempt.startedAt) %></span>
-                <span><%= attempt.answered %>/<%= attempt.totalQuestions %> respondidas</span>
-              </div>
+            <div class="list-card-main">
+              <a class="list-card-title" href="/simulados/<%= attempt.id %>"><%= attempt.title %></a>
+              <div class="list-card-meta">Iniciado em <%= formatDateTimeAt(attempt.startedAt) %> · <%= progressLabel %></div>
             </div>
-            <a class="button button-secondary button-small" href="/simulados/<%= attempt.id %>">Continuar</a>
+            <div class="list-card-side">
+              <progress class="progress" value="<%= attempt.answered %>" max="<%= attempt.totalQuestions %>" aria-label="<%= progressLabel %>"></progress>
+              <a class="link-strong" href="/simulados/<%= attempt.id %>">Continuar →</a>
+            </div>
           </li>
         <% }) %>
       </ul>
     </section>
   <% } %>
 
-  <section class="card" aria-labelledby="meus-simulados">
-    <div class="section-title">
+  <section class="card list-card" aria-labelledby="meus-simulados">
+    <div class="list-card-header">
       <h2 id="meus-simulados">Meus simulados</h2>
+      <% const myCount = panel.mine.length + panel.received.length; %>
+      <% if (myCount) { %><span class="list-card-count"><%= plural(myCount, 'simulado', 'simulados') %></span><% } %>
     </div>
-    <% if (!panel.mine.length && !panel.received.length) { %>
-      <p class="empty-note">
+    <% if (!myCount) { %>
+      <p class="list-card-empty">
         Você ainda não importou nenhum simulado. <a href="/bancos/importar">Importe um arquivo .md</a> gerado no ChatGPT, ou o modelo de exemplo para testar.
       </p>
     <% } else { %>
-      <ul class="item-list">
+      <ul class="list-card-rows">
         <% panel.mine.forEach(function (bank) { %>
           <%- include('partials/bank-item', {
             bank,
             label: bank.sharedWith.length ? 'Compartilhado com ' + formatList(bank.sharedWith) : 'Privado',
             badgeClass: bank.sharedWith.length ? 'badge-info' : 'badge-muted',
+            badgeIcon: bank.sharedWith.length ? 'users' : 'lock',
           }) %>
         <% }) %>
         <% panel.received.forEach(function (bank) { %>
           <%- include('partials/bank-item', {
             bank,
             label: 'Recebido de ' + bank.ownerName,
-            badgeClass: 'badge-muted',
+            badgeClass: 'badge-teal',
+            badgeIcon: 'inbox',
           }) %>
         <% }) %>
       </ul>
@@ -56,20 +65,20 @@
   </section>
 
   <% panel.groups.forEach(function (group) { %>
-    <section class="card" aria-label="Grupo <%= group.name %>">
-      <div class="section-title">
+    <section class="card list-card" aria-label="Grupo <%= group.name %>">
+      <div class="list-card-header">
         <h2><%= group.name %></h2>
-        <span class="hint">Grupo de estudo</span>
+        <span class="list-card-count">Grupo<% if (group.banks.length) { %> · <%= plural(group.banks.length, 'simulado dos outros membros', 'simulados dos outros membros') %><% } %></span>
       </div>
       <% if (!group.banks.length) { %>
-        <p class="empty-note">Ninguém compartilhou simulados neste grupo ainda.</p>
+        <p class="list-card-empty">Nenhum simulado enviado pelos outros membros deste grupo ainda.</p>
       <% } else { %>
-        <ul class="item-list">
+        <ul class="list-card-rows">
           <% group.banks.forEach(function (bank) { %>
             <%- include('partials/bank-item', {
               bank,
               label: 'Enviado por ' + bank.ownerName,
-              badgeClass: 'badge-info',
+              badgeClass: 'badge-muted badge-plain',
             }) %>
           <% }) %>
         </ul>
@@ -77,12 +86,14 @@
     </section>
   <% }) %>
 
-  <section class="card<% if (attempts.history.length) { %> table-card<% } %>" aria-labelledby="historico">
-    <% if (!attempts.history.length) { %>
+  <section class="card list-card" aria-labelledby="historico">
+    <div class="list-card-header">
       <h2 id="historico">Histórico</h2>
-      <p class="empty-note">Os simulados que você finalizar aparecem aqui, com a nota e o tempo.</p>
+      <% if (attempts.history.length) { %><span class="list-card-count"><%= plural(attempts.history.length, 'tentativa finalizada', 'tentativas finalizadas') %></span><% } %>
+    </div>
+    <% if (!attempts.history.length) { %>
+      <p class="list-card-empty">Os simulados que você finalizar aparecem aqui, com a nota e o tempo.</p>
     <% } else { %>
-      <h2 id="historico" class="table-card-title">Histórico</h2>
       <table class="table responsive-table">
         <thead>
           <tr>
@@ -98,14 +109,16 @@
             <tr>
               <td data-label="Data" class="nowrap"><%= formatDateTime(attempt.finishedAt) %></td>
               <td data-label="Simulado" class="break-anywhere"><%= attempt.title %></td>
-              <td data-label="Nota"><strong><%= formatScore(attempt.score) %></strong></td>
+              <td data-label="Nota" class="nowrap">
+                <span><strong><%= formatScore(attempt.score) %></strong><span class="muted"> · <%= attempt.correctCount ?? 0 %> de <%= attempt.totalQuestions %></span></span>
+              </td>
               <td data-label="Tempo">
                 <div>
                   <%= formatDuration(attempt.durationSeconds) %>
                   <% if (attempt.finishReason === 'time') { %><span class="cell-note">Tempo esgotado</span><% } %>
                 </div>
               </td>
-              <td class="row-actions"><a href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a></td>
+              <td class="row-actions cell-end"><a class="link-strong" href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a></td>
             </tr>
           <% }) %>
         </tbody>

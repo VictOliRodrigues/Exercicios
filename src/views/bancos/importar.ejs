@@ -1,88 +1,100 @@
-<%- include('../partials/head') %>
+<%- include('../partials/head', { pageWidth: 1200 }) %>
 <div class="page-header">
   <h1>Importar simulado</h1>
 </div>
 
 <div class="stack">
   <% if (issues.length) { %>
-    <section class="card" aria-labelledby="erros-titulo">
-      <div class="alert alert-error" role="alert">
-        <p class="alert-title" id="erros-titulo">
-          Não foi possível importar: <%= plural(issues.length, 'problema encontrado', 'problemas encontrados') %>. Nada foi gravado.
-        </p>
-        <ul>
-          <% issues.forEach(function (issue) { %><li><%= issue %></li><% }) %>
+    <section class="card issues-card" aria-labelledby="erros-titulo">
+      <h2 class="issues-card-head" id="erros-titulo" role="alert">
+        <%- include('../partials/alert-icon') %>
+        Não foi possível importar: o arquivo tem <%= plural(issues.length, 'problema', 'problemas') %>
+      </h2>
+      <div class="issues-card-body">
+        <ul class="issue-list">
+          <% issues.forEach(function (issue) { %>
+            <li><% if (issue.question !== null) { %><strong>Questão <%= issue.question %><% if (issue.line !== null) { %> · linha <%= issue.line %><% } %></strong> <% } %><%= issue.detail.charAt(0).toUpperCase() + issue.detail.slice(1) %></li>
+          <% }) %>
         </ul>
+        <div>
+          <label class="box-label" for="mensagem-gpt">Mensagem para o ChatGPT</label>
+          <textarea class="copy-box copy-box-strong" id="mensagem-gpt" rows="6" readonly><%= gptMessage %></textarea>
+          <button type="button" class="button button-secondary button-medium" data-copy="mensagem-gpt">
+            <%- include('../partials/icon', { iconName: 'copy', iconClass: 'button-icon' }) %>
+            <span data-copy-label>Copiar mensagem</span>
+          </button>
+        </div>
       </div>
-      <h2>Mensagem para o ChatGPT</h2>
-      <p class="muted">Cole esta mensagem na mesma conversa em que as questões foram geradas e importe o arquivo corrigido.</p>
-      <textarea class="code-box" id="mensagem-gpt" rows="12" readonly aria-label="Mensagem para o ChatGPT"><%= gptMessage %></textarea>
-      <button type="button" class="button button-primary" data-copy="mensagem-gpt">Copiar mensagem</button>
     </section>
   <% } %>
 
-  <section class="card">
-    <h2>Arquivo de questões</h2>
-    <% if (fileError) { %>
-      <div class="alert alert-error" role="alert"><%= fileError %></div>
-    <% } %>
-    <form method="post" action="/bancos" enctype="multipart/form-data" class="form">
-      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
-      <label class="field">
-        <span>Arquivo .md</span>
-        <input type="file" name="arquivo" accept=".md,text/markdown" required>
-        <small class="hint">Até <%= maxUploadLabel %>, em UTF-8.</small>
-      </label>
-
-      <fieldset>
-        <legend>Compartilhar com</legend>
-        <% if (!myGroups.length) { %>
-          <p class="hint">Você ainda não participa de nenhum grupo de estudo, então o simulado fica privado. Quem cria os grupos é o administrador.</p>
-        <% } else { %>
-          <ul class="checkbox-list">
-            <% myGroups.forEach(function (group) { %>
-              <li>
-                <label>
-                  <input type="checkbox" name="grupos" value="<%= group.id %>"<% if (selectedGroups.includes(group.id)) { %> checked<% } %>>
-                  <span><%= group.name %></span>
-                </label>
-              </li>
-            <% }) %>
-          </ul>
-          <p class="hint">Sem nenhum grupo marcado, o simulado fica privado: só você vê.</p>
-        <% } %>
-      </fieldset>
-
-      <div class="actions">
-        <button type="submit" class="button button-primary">Importar</button>
-      </div>
-    </form>
-  </section>
-
-  <section class="card">
-    <h2>Como gerar as questões no ChatGPT</h2>
-    <ol class="steps">
-      <li>
-        <strong>Cole o prompt abaixo no ChatGPT.</strong>
-        <p class="muted">Ele só explica o formato do arquivo, para a importação não falhar.</p>
-        <pre class="code-box" id="prompt-chatgpt"><%= promptText %></pre>
-        <div class="actions">
-          <button type="button" class="button button-primary" data-copy="prompt-chatgpt">Copiar prompt</button>
-          <a class="button button-secondary" href="/modelos/prompt-chatgpt.txt">Baixar prompt (.txt)</a>
+  <div class="import-grid">
+    <section class="card">
+      <h2 class="section-heading">Arquivo de questões</h2>
+      <% if (fileError) { %>
+        <%- include('../partials/errors', { errors: [fileError] }) %>
+      <% } %>
+      <form method="post" action="/bancos" enctype="multipart/form-data" class="form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+        <div class="field">
+          <label for="arquivo">Arquivo .md</label>
+          <div class="file-field">
+            <input type="file" id="arquivo" name="arquivo" accept=".md,text/markdown" aria-describedby="arquivo-dica" required>
+          </div>
+          <small class="hint" id="arquivo-dica">Arquivo Markdown (.md) em UTF-8, com até <%= maxUploadLabel %>.</small>
         </div>
-      </li>
-      <li>
-        <strong>Peça as questões.</strong>
-        <p class="muted">Diga o assunto e a quantidade, e mande suas anotações em texto, imagem ou PDF.</p>
-      </li>
-      <li>
-        <strong>Baixe o arquivo .md e importe aqui.</strong>
-        <p class="muted">Se der erro, esta página monta uma mensagem pronta para o ChatGPT corrigir o arquivo.</p>
-      </li>
-    </ol>
-    <h2 class="section-break">Modelo</h2>
-    <p class="muted">Um simulado de 5 questões com todos os recursos do formato (código, lista de afirmativas, tabela). Pode ser importado direto para testar.</p>
-    <a class="button button-secondary" href="/modelos/modelo-questoes.md">Baixar modelo (.md)</a>
-  </section>
+
+        <fieldset class="check-fieldset">
+          <legend>Compartilhar com</legend>
+          <% if (!myGroups.length) { %>
+            <p class="hint">Você ainda não participa de nenhum grupo de estudo, então o simulado fica privado. Quem cria os grupos é o administrador.</p>
+          <% } else { %>
+            <ul class="check-list">
+              <% myGroups.forEach(function (group) { %>
+                <li>
+                  <label>
+                    <input type="checkbox" name="grupos" value="<%= group.id %>"<% if (selectedGroups.includes(group.id)) { %> checked<% } %>>
+                    <span><%= group.name %></span>
+                  </label>
+                </li>
+              <% }) %>
+            </ul>
+            <p class="hint">Se nenhum grupo for marcado, o simulado fica privado.</p>
+          <% } %>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit" class="button button-primary">Importar</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2 class="section-heading">Como gerar as questões no ChatGPT</h2>
+      <ol class="step-list">
+        <li><span>Copie o prompt abaixo e cole numa conversa nova no ChatGPT, junto com o conteúdo que você quer estudar.</span></li>
+        <li><span>Quando o ChatGPT responder, salve a resposta num arquivo <strong>.md</strong>. O modelo mostra como o arquivo deve ficar.</span></li>
+        <li><span>Volte aqui e importe o arquivo. Se houver erro, copie a mensagem pronta e mande para o ChatGPT corrigir.</span></li>
+      </ol>
+      <p class="box-label" id="prompt-titulo">Prompt</p>
+      <pre class="copy-box" id="prompt-chatgpt" aria-labelledby="prompt-titulo" tabindex="0"><%= promptText %></pre>
+      <div class="actions actions-tight">
+        <button type="button" class="button button-secondary button-medium" data-copy="prompt-chatgpt">
+          <%- include('../partials/icon', { iconName: 'copy', iconClass: 'button-icon' }) %>
+          <span data-copy-label>Copiar prompt</span>
+        </button>
+        <a class="button button-secondary button-medium" href="/modelos/prompt-chatgpt.txt">
+          <%- include('../partials/icon', { iconName: 'download', iconClass: 'button-icon' }) %>
+          Baixar prompt (.txt)
+        </a>
+      </div>
+      <hr class="section-divider">
+      <p class="section-note">Um arquivo de exemplo, pronto para importar.</p>
+      <a class="button button-secondary" href="/modelos/modelo-questoes.md">
+        <%- include('../partials/icon', { iconName: 'download', iconClass: 'button-icon' }) %>
+        Baixar modelo (.md)
+      </a>
+    </section>
+  </div>
 </div>
 <%- include('../partials/foot') %>

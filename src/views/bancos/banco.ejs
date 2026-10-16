@@ -1,4 +1,4 @@
-<%- include('../partials/head') %>
+<%- include('../partials/head', { pageWidth: 880 }) %>
 <%
   let origin;
   if (isOwner) {
@@ -10,127 +10,148 @@
   } else {
     origin = 'Recebido de ' + ownerName;
   }
+  const originClass = !isOwner && !viaGroups.length ? 'badge-teal' : isOwner && sharedGroups.length ? 'badge-info' : 'badge-muted';
   const sharedIds = sharedGroups.map(function (group) { return group.id; });
+  const sampleCount = Math.min(20, bank.questionCount);
 %>
-<a class="back-link" href="/">← Painel</a>
+<nav class="breadcrumb" aria-label="Você está em">
+  <a href="/">Painel</a><span class="breadcrumb-separator" aria-hidden="true">›</span><span aria-current="page"><%= title %></span>
+</nav>
 <div class="page-header">
-  <h1><%= title %></h1>
-  <div class="subtitle item-meta">
-    <span><%= plural(bank.questionCount, 'questão', 'questões') %></span>
-    <span class="badge <%= isOwner && !sharedGroups.length ? 'badge-muted' : 'badge-info' %>"><%= origin %></span>
-    <span>Importado em <%= formatDate(bank.createdAt) %></span>
+  <div>
+    <h1 class="title-lg"><%= title %></h1>
+    <div class="page-meta">
+      <strong><%= plural(bank.questionCount, 'questão', 'questões') %></strong>
+      <span class="badge <%= originClass %>"><%= origin %></span>
+      <span>Importado em <%= formatDate(bank.createdAt) %></span>
+    </div>
   </div>
 </div>
 
-<div class="stack">
+<div class="stack stack-tight">
   <% if (importResult) { %>
-    <div class="alert alert-success" role="status">
-      <%= plural(importResult.questionCount, 'questão importada', 'questões importadas') %>.
-    </div>
-    <% if (importResult.warnings.length) { %>
-      <div class="alert alert-warning" role="status">
-        <p class="alert-title">Avisos da importação</p>
-        <ul>
-          <% importResult.warnings.forEach(function (warning) { %><li><%= warning %></li><% }) %>
-        </ul>
-      </div>
-    <% } %>
+    <section class="card result-card" role="status" aria-labelledby="importacao">
+      <h2 class="result-card-head" id="importacao">
+        <%- include('../partials/icon', { iconName: 'check' }) %>
+        <%= plural(importResult.questionCount, 'questão importada', 'questões importadas') %>
+      </h2>
+      <% if (importResult.warnings.length) { %>
+        <div class="result-card-body">
+          <p><%= plural(importResult.warnings.length, 'aviso', 'avisos') %> — o simulado foi importado mesmo assim:</p>
+          <ul class="warning-list">
+            <% importResult.warnings.forEach(function (warning) { %>
+              <% const where = /^Questão \d+:/.exec(warning); %>
+              <li>
+                <%- include('../partials/alert-icon', { icon: 'warning' }) %>
+                <span><% if (where) { %><strong><%= where[0] %></strong><%= warning.slice(where[0].length) %><% } else { %><%= warning %><% } %></span>
+              </li>
+            <% }) %>
+          </ul>
+        </div>
+      <% } %>
+    </section>
   <% } %>
 
-  <section class="card" aria-labelledby="fazer-simulado">
-    <h2 id="fazer-simulado">Fazer o simulado</h2>
-    <form method="post" action="/bancos/<%= bank.id %>/simulados" class="form form-grid">
-      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
-      <label class="field">
-        <span>Quantidade de questões</span>
-        <input type="number" name="quantidade" min="1" max="<%= bank.questionCount %>" step="1" inputmode="numeric" placeholder="Todas (<%= bank.questionCount %>)">
-        <small class="hint">Em branco, todas. Um número menor sorteia as questões.</small>
-      </label>
-      <label class="field">
-        <span>Tempo limite (minutos)</span>
-        <input type="number" name="minutos" min="1" max="<%= maxMinutes %>" step="1" inputmode="numeric" placeholder="Sem limite">
-        <small class="hint">Em branco, sem limite. Quando o tempo acaba, a prova é finalizada sozinha.</small>
-      </label>
-      <div class="actions">
-        <button type="submit" class="button button-primary">Iniciar novo simulado</button>
+  <section class="card" aria-labelledby="suas-tentativas">
+    <h2 class="section-heading section-heading-spaced" id="suas-tentativas">Suas tentativas</h2>
+    <% if (!attempts.length) { %>
+      <p class="empty-note">Você ainda não fez este simulado. Escolha as opções abaixo e inicie.</p>
+    <% } else { %>
+      <div class="table-box">
+        <table class="table responsive-table">
+          <thead>
+            <tr>
+              <th scope="col">Data</th>
+              <th scope="col">Nota</th>
+              <th scope="col">Tempo</th>
+              <th scope="col"><span class="sr-only">Ações</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% attempts.forEach(function (attempt) { %>
+              <tr>
+                <td data-label="Data" class="nowrap"><%= formatDateTime(attempt.startedAt) %></td>
+                <% if (attempt.status === 'in_progress') { %>
+                  <td data-label="Nota"><span class="cell-inline"><span class="tag tag-info">Em andamento</span><span class="muted">· <%= attempt.answered %> de <%= attempt.totalQuestions %> respondidas</span></span></td>
+                  <td data-label="Tempo">—</td>
+                  <td class="row-actions">
+                    <div class="row-actions-inline row-actions-inline-tight">
+                      <a class="button button-small button-primary" href="/simulados/<%= attempt.id %>">Continuar</a>
+                      <form method="post" action="/simulados/<%= attempt.id %>/descartar" class="inline-form" data-confirm="Descartar esta tentativa? As respostas dela serão apagadas.">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+                        <button type="submit" class="button button-small button-danger-outline">Descartar</button>
+                      </form>
+                    </div>
+                  </td>
+                <% } else { %>
+                  <td data-label="Nota" class="nowrap"><span><strong><%= formatScore(attempt.score) %></strong><span class="muted"> · <%= attempt.correctCount ?? 0 %> de <%= attempt.totalQuestions %></span></span></td>
+                  <td data-label="Tempo">
+                    <div>
+                      <%= formatDuration(attempt.durationSeconds) %>
+                      <% if (attempt.finishReason === 'time') { %><span class="cell-note">Tempo esgotado</span><% } %>
+                    </div>
+                  </td>
+                  <td class="row-actions cell-end"><a class="link-strong" href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a></td>
+                <% } %>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
       </div>
-      <p class="hint full">O cronômetro começa ao clicar em Iniciar. As questões e as alternativas são embaralhadas a cada tentativa, 10 questões por página.</p>
+    <% } %>
+  </section>
+
+  <section class="card" aria-labelledby="novo-simulado">
+    <h2 class="section-heading" id="novo-simulado">Novo simulado</h2>
+    <form method="post" action="/bancos/<%= bank.id %>/simulados" class="start-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <fieldset class="choice-group">
+        <legend>Quantidade de questões</legend>
+        <div class="choice-list">
+          <label class="choice">
+            <input type="radio" name="modoQuantidade" value="todas" checked>
+            Todas (<%= bank.questionCount %>)
+          </label>
+          <div class="choice">
+            <input type="radio" name="modoQuantidade" value="sortear" id="modo-sortear">
+            <label for="modo-sortear">Sortear</label>
+            <input class="number-input" type="number" name="quantidade" value="<%= sampleCount %>" min="1" max="<%= bank.questionCount %>" step="1" inputmode="numeric" aria-label="Quantas questões sortear" data-checks="modo-sortear">
+            <span class="choice-unit">questões</span>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="choice-group">
+        <legend>Tempo limite</legend>
+        <div class="choice-list">
+          <label class="choice">
+            <input type="radio" name="modoTempo" value="sem-limite" checked>
+            Sem limite
+          </label>
+          <div class="choice">
+            <input type="radio" name="modoTempo" value="limite" id="modo-limite">
+            <label for="modo-limite">Limite de</label>
+            <input class="number-input" type="number" name="minutos" value="60" min="1" max="<%= maxMinutes %>" step="1" inputmode="numeric" aria-label="Tempo limite em minutos" aria-describedby="tempo-dica" data-checks="modo-limite">
+            <span class="choice-unit">minutos</span>
+          </div>
+        </div>
+        <p class="hint" id="tempo-dica">Quando o tempo acaba, a prova é finalizada sozinha.</p>
+      </fieldset>
+      <button type="submit" class="button button-primary">Iniciar novo simulado</button>
     </form>
   </section>
 
-  <section class="card<% if (attempts.length) { %> table-card<% } %>" aria-labelledby="suas-tentativas">
-    <% if (!attempts.length) { %>
-      <h2 id="suas-tentativas">Suas tentativas</h2>
-      <p class="empty-note">Você ainda não fez este simulado. Suas tentativas e notas aparecem aqui.</p>
-    <% } else { %>
-      <h2 id="suas-tentativas" class="table-card-title">Suas tentativas</h2>
-      <table class="table responsive-table">
-        <thead>
-          <tr>
-            <th scope="col">Início</th>
-            <th scope="col">Nota</th>
-            <th scope="col">Tempo</th>
-            <th scope="col"><span class="sr-only">Ações</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% attempts.forEach(function (attempt) { %>
-            <tr>
-              <td data-label="Início" class="nowrap"><%= formatDateTime(attempt.startedAt) %></td>
-              <% if (attempt.status === 'in_progress') { %>
-                <td data-label="Nota">
-                  <div>
-                    <span class="badge badge-warning">Em andamento</span>
-                    <span class="cell-note"><%= attempt.answered %>/<%= attempt.totalQuestions %> respondidas</span>
-                  </div>
-                </td>
-                <td data-label="Tempo">—</td>
-                <td class="row-actions">
-                  <div class="row-actions-list">
-                    <a href="/simulados/<%= attempt.id %>">Continuar</a>
-                    <form method="post" action="/simulados/<%= attempt.id %>/descartar" class="inline-form" data-confirm="Descartar esta tentativa? As respostas dela serão apagadas.">
-                      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
-                      <button type="submit" class="link-button link-danger">Descartar</button>
-                    </form>
-                  </div>
-                </td>
-              <% } else { %>
-                <td data-label="Nota">
-                  <div>
-                    <strong><%= formatScore(attempt.score) %></strong>
-                    <span class="cell-note"><%= plural(attempt.totalQuestions, 'questão', 'questões') %></span>
-                  </div>
-                </td>
-                <td data-label="Tempo">
-                  <div>
-                    <%= formatDuration(attempt.durationSeconds) %>
-                    <% if (attempt.finishReason === 'time') { %><span class="cell-note">Tempo esgotado</span><% } %>
-                  </div>
-                </td>
-                <td class="row-actions">
-                  <div class="row-actions-list">
-                    <a href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a>
-                  </div>
-                </td>
-              <% } %>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    <% } %>
-  </section>
-
   <% if (isOwner) { %>
-    <section class="card">
-      <h2>Compartilhar com</h2>
+    <section class="card" aria-labelledby="compartilhar">
+      <h2 class="section-heading" id="compartilhar">Compartilhar com</h2>
       <% if (!myGroups.length) { %>
         <p class="empty-note">Você não participa de nenhum grupo de estudo, então o simulado é privado. Quem cria os grupos é o administrador.</p>
       <% } else { %>
-        <form method="post" action="/bancos/<%= bank.id %>/compartilhamento" class="form">
+        <p class="card-lead">Os membros dos grupos marcados veem este simulado no painel deles. Sem nenhum grupo marcado, ele fica privado. Quem já fez continua com ele mesmo que o compartilhamento acabe.</p>
+        <form method="post" action="/bancos/<%= bank.id %>/compartilhamento" class="form share-form">
           <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
           <fieldset>
             <legend class="sr-only">Grupos</legend>
-            <ul class="checkbox-list">
+            <ul class="check-list">
               <% myGroups.forEach(function (group) { %>
                 <li>
                   <label>
@@ -141,21 +162,25 @@
               <% }) %>
             </ul>
           </fieldset>
-          <p class="hint">Sem nenhum grupo marcado, o simulado fica privado. Quem já fez continua com ele mesmo que o compartilhamento acabe.</p>
           <div class="actions">
-            <button type="submit" class="button button-primary">Salvar compartilhamento</button>
+            <button type="submit" class="button button-secondary">Salvar compartilhamento</button>
           </div>
         </form>
       <% } %>
     </section>
 
-    <section class="card danger-zone">
-      <h2>Excluir simulado</h2>
-      <p class="muted">O simulado some do seu painel e dos grupos. Quem já fez continua com ele, e os resultados de todos são preservados.</p>
-      <form method="post" action="/bancos/<%= bank.id %>/excluir" class="inline-form" data-confirm="Excluir o simulado <%= title %>? Esta ação não pode ser desfeita.">
-        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
-        <button type="submit" class="button button-danger">Excluir simulado</button>
-      </form>
+    <section class="card danger-card" aria-labelledby="area-de-perigo">
+      <h2 class="danger-card-head" id="area-de-perigo">Área de perigo</h2>
+      <div class="danger-card-body">
+        <div class="danger-card-text">
+          <h3>Excluir simulado</h3>
+          <p>O simulado some do seu painel e do painel de quem o recebeu por grupo. Quem já fez continua com ele, e os resultados de todos ficam guardados. Esta ação não pode ser desfeita.</p>
+        </div>
+        <form method="post" action="/bancos/<%= bank.id %>/excluir" class="inline-form" data-confirm="Excluir o simulado <%= title %>? Esta ação não pode ser desfeita.">
+          <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+          <button type="submit" class="button button-danger">Excluir simulado</button>
+        </form>
+      </div>
     </section>
   <% } %>
 </div>

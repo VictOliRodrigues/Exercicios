@@ -36,7 +36,7 @@ export function createApp(deps: AppDeps) {
   app.disable('x-powered-by');
   app.set('view engine', 'ejs');
   app.set('views', path.join(import.meta.dirname, 'views'));
-  app.locals.appName = 'Simulados';
+  app.locals.appName = 'Sabatina';
   Object.assign(app.locals, viewHelpers);
 
   // O padrão do helmet já traz default-src 'self', script-src 'self', img-src 'self' data: e HSTS.
@@ -117,11 +117,12 @@ export function createApp(deps: AppDeps) {
     if (error?.code === CSRF_ERROR_CODE) {
       return res.status(403).render('errors/sessao-expirada', { title: 'Sessão expirada' });
     }
-    const reference = randomBytes(4).toString('hex').toUpperCase();
+    const hex = randomBytes(4).toString('hex').toUpperCase();
+    const reference = `${hex.slice(0, 4)}-${hex.slice(4)}`;
     console.error(`[erro ${reference}]`, error);
     if (res.headersSent) return;
     const status = error?.status >= 400 && error?.status < 500 ? error.status : 500;
-    res.status(status).render('errors/500', { title: 'Algo deu errado', reference });
+    res.status(status).render('errors/500', { title: 'Algo deu errado', reference, status });
   };
   app.use(errorHandler);
 

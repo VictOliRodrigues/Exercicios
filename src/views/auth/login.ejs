@@ -1,28 +1,30 @@
 <%- include('../partials/head', { layout: 'centered' }) %>
-<section class="card narrow-card">
-  <div class="card-brand">
-    <%- include('../partials/logo') %>
-    <h1><%= appName %></h1>
-  </div>
-  <p class="muted">Entre com o e-mail e a senha que o administrador enviou para você.</p>
+<div class="auth">
+  <%- include('../partials/auth-brand') %>
+  <section class="card form-card">
+    <h1>Entrar</h1>
 
-  <% if (error) { %>
-    <div class="alert alert-error" role="alert"><%= error %></div>
-  <% } %>
+    <% if (error) { %>
+      <div class="alert alert-error alert-with-icon" role="alert">
+        <%- include('../partials/alert-icon') %>
+        <span><%= error %></span>
+      </div>
+    <% } %>
 
-  <form method="post" action="/login" class="form">
-    <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
-    <label class="field">
-      <span>E-mail</span>
-      <input type="email" name="email" value="<%= email %>" autocomplete="username" maxlength="254" required autofocus>
-    </label>
-    <label class="field">
-      <span>Senha</span>
-      <input type="password" name="senha" autocomplete="current-password" maxlength="200" required>
-    </label>
-    <button type="submit" class="button button-primary button-block">Entrar</button>
-  </form>
+    <form method="post" action="/login" class="form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <label class="field">
+        <span>E-mail</span>
+        <input type="email" name="email" value="<%= email %>" placeholder="nome@empresa.com.br" autocomplete="username" maxlength="254" required autofocus>
+      </label>
+      <label class="field">
+        <span>Senha</span>
+        <input type="password" name="senha" autocomplete="current-password" maxlength="200" required>
+      </label>
+      <button type="submit" class="button button-primary button-block">Entrar</button>
+    </form>
 
-  <p class="card-footer"><a href="/esqueci-senha">Esqueci minha senha</a></p>
-</section>
+    <p class="card-footer"><a href="/esqueci-senha">Esqueci minha senha</a></p>
+  </section>
+</div>
 <%- include('../partials/foot') %>

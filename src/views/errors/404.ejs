@@ -1,8 +1,9 @@
 <%- include('../partials/head', { layout: 'centered' }) %>
-<section class="card narrow-card error-card">
+<section class="error-page">
+  <% if (!locals.currentUser) { %><%- include('../partials/auth-brand') %><% } %>
   <p class="error-code" aria-hidden="true">404</p>
-  <h1>Página não encontrada</h1>
-  <p class="muted">O endereço pode estar errado, ou a página não existe mais.</p>
+  <h1 class="error-title">Página não encontrada</h1>
+  <p class="error-text">O endereço pode estar errado, ou a página foi removida.</p>
   <% if (locals.currentUser) { %>
     <a class="button button-primary" href="/">Voltar ao painel</a>
   <% } else { %>

@@ -1,9 +1,7 @@
 <li>
-  <div class="item-main">
-    <a class="item-title" href="/bancos/<%= bank.id %>"><%= bank.title %></a>
-    <div class="item-meta">
-      <span><%= plural(bank.questionCount, 'questão', 'questões') %></span>
-      <span class="badge <%= badgeClass %>"><%= label %></span>
-    </div>
+  <div class="list-card-main">
+    <a class="list-card-title" href="/bancos/<%= bank.id %>"><%= bank.title %></a>
+    <div class="list-card-meta"><%= plural(bank.questionCount, 'questão', 'questões') %></div>
   </div>
+  <span class="badge <%= badgeClass %>"><% if (locals.badgeIcon) { %><%- include('icon', { iconName: badgeIcon }) %><% } %><%= label %></span>
 </li>

@@ -28,7 +28,7 @@ const sessionStore = new MySQLStore(
 
 const app = createApp({ env, db, crypto, fileStore, sessionStore });
 const server = app.listen(env.PORT, () => {
-  console.log(`Simulados ouvindo na porta ${env.PORT} (${env.NODE_ENV})`);
+  console.log(`Sabatina ouvindo na porta ${env.PORT} (${env.NODE_ENV})`);
 });
 
 function shutdown(signal: string) {

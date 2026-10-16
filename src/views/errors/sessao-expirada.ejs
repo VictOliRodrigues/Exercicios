@@ -1,7 +1,9 @@
 <%- include('../partials/head', { layout: 'centered' }) %>
-<section class="card narrow-card error-card">
-  <h1>Sua sessão expirou</h1>
-  <p class="muted">Por segurança, o formulário não foi enviado. Volte à página anterior, recarregue e tente de novo.</p>
+<section class="error-page">
+  <% if (!locals.currentUser) { %><%- include('../partials/auth-brand') %><% } %>
+  <span class="error-status error-status-warning"><%- include('../partials/icon', { iconName: 'clock' }) %></span>
+  <h1 class="error-title">Sua sessão expirou</h1>
+  <p class="error-text">Por segurança, você foi desconectado depois de um tempo sem atividade. <strong>O formulário não foi enviado.</strong> Entre de novo e preencha outra vez.</p>
   <a class="button button-primary" href="/">Ir para o início</a>
 </section>
 <%- include('../partials/foot') %>

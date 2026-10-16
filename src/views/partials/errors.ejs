@@ -1,7 +1,8 @@
 <% if (errors && errors.length) { %>
-  <div class="alert alert-error" role="alert">
+  <div class="alert alert-error alert-with-icon" role="alert">
+    <%- include('alert-icon') %>
     <% if (errors.length === 1) { %>
-      <%= errors[0] %>
+      <span><%= errors[0] %></span>
     <% } else { %>
       <ul>
         <% errors.forEach(function (message) { %><li><%= message %></li><% }) %>

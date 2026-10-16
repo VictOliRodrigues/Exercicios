@@ -445,6 +445,7 @@ export interface AttemptSummary {
   finishedAt: Date | null;
   finishReason: AttemptRow['finishReason'];
   durationSeconds: number | null;
+  correctCount: number | null;
   score: string | null;
 }
 
@@ -458,6 +459,7 @@ const summaryOf = (row: AttemptRow, answered: Map<string, number>): AttemptSumma
   finishedAt: row.finishedAt,
   finishReason: row.finishReason,
   durationSeconds: row.durationSeconds,
+  correctCount: row.correctCount,
   score: row.score,
 });
 
