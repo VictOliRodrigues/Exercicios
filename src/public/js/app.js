@@ -49,11 +49,49 @@ for (const dialog of document.querySelectorAll('dialog.modal[open]')) {
   });
 }
 
-// Formulário com data-confirm="Pergunta?": só envia depois de confirmar.
-document.addEventListener('submit', (event) => {
-  const form = event.target.closest('form[data-confirm]');
-  if (form && !window.confirm(form.dataset.confirm)) event.preventDefault();
-});
+// Formulário com data-confirm="Texto": só envia depois de confirmar na janela #confirmar-acao.
+// data-confirm-title e data-confirm-button dão o título e o texto do botão de confirmar.
+{
+  const dialog = document.getElementById('confirmar-acao');
+  let pending = null;
+  let confirmed = null;
+
+  document.addEventListener('submit', (event) => {
+    const form = event.target.closest('form[data-confirm]');
+    if (!form) return;
+    if (form === confirmed) {
+      confirmed = null;
+      return;
+    }
+    event.preventDefault();
+    if (!dialog?.showModal) {
+      if (window.confirm(form.dataset.confirm)) form.submit();
+      return;
+    }
+    pending = { form, submitter: event.submitter };
+    dialog.querySelector('#confirmar-titulo').textContent =
+      form.dataset.confirmTitle || 'Tem certeza?';
+    dialog.querySelector('#confirmar-texto').textContent = form.dataset.confirm;
+    dialog.querySelector('[data-confirm-ok]').textContent =
+      form.dataset.confirmButton || 'Confirmar';
+    dialog.showModal();
+  });
+
+  if (dialog) {
+    dialog.querySelector('[data-confirm-ok]').addEventListener('click', () => {
+      const { form, submitter } = pending;
+      dialog.close();
+      confirmed = form;
+      if (submitter) form.requestSubmit(submitter);
+      else form.requestSubmit();
+    });
+    dialog.querySelector('[data-confirm-cancel]').addEventListener('click', () => dialog.close());
+    // Clicar no fundo escuro, fora da janela, também cancela.
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+  }
+}
 
 // Modo claro/escuro. Sem escolha, vale o tema do sistema. O botão grava a escolha num cookie, que o
 // servidor lê para já mandar a página no tema certo.

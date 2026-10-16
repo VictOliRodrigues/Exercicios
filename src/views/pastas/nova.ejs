@@ -1,0 +1,42 @@
+<%- include('../partials/head', { pageWidth: 880 }) %>
+<nav class="breadcrumb" aria-label="Você está em">
+  <a href="/">Painel</a><span class="breadcrumb-separator" aria-hidden="true">›</span><span aria-current="page">Nova pasta</span>
+</nav>
+<div class="page-header">
+  <div>
+    <h1 class="title-lg">Nova pasta</h1>
+    <p class="page-lead">Separe os seus simulados por assunto. Só você vê as suas pastas: elas não mudam nada para os grupos nem para quem recebeu os seus simulados.</p>
+  </div>
+</div>
+
+<%- include('../partials/errors', { errors }) %>
+
+<form method="post" action="/pastas" class="stack stack-tight">
+  <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+
+  <section class="card">
+    <label class="field">
+      <span>Nome da pasta</span>
+      <input type="text" name="nome" value="<%= nome %>" maxlength="<%= nameMaxLength %>" placeholder="Ex.: Direito Constitucional" autocomplete="off" required autofocus>
+    </label>
+  </section>
+
+  <% if (choices.length) { %>
+    <section class="card list-card" aria-labelledby="simulados">
+      <div class="list-card-header">
+        <h2 id="simulados">Simulados da pasta</h2>
+        <span class="list-card-count">Opcional: dá para guardar depois</span>
+      </div>
+      <%- include('../partials/bank-picks', { choices, selected }) %>
+    </section>
+  <% } %>
+
+  <div class="actions">
+    <button type="submit" class="button button-primary">
+      <%- include('../partials/icon', { iconName: 'folder-plus', iconClass: 'button-icon' }) %>
+      Criar pasta
+    </button>
+    <a class="button button-secondary" href="/">Cancelar</a>
+  </div>
+</form>
+<%- include('../partials/foot') %>

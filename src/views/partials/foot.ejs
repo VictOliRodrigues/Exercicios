@@ -1,3 +1,19 @@
 </main>
+<% if (locals.currentUser) { %>
+  <%# Janela de confirmação dos formulários com data-confirm (o app.js preenche e abre). %>
+  <dialog class="modal modal-confirm" id="confirmar-acao" aria-labelledby="confirmar-titulo" aria-describedby="confirmar-texto">
+    <div class="modal-header">
+      <span class="modal-status modal-status-danger"><%- include('alert-icon', { icon: 'warning' }) %></span>
+      <h2 class="modal-title" id="confirmar-titulo">Tem certeza?</h2>
+    </div>
+    <div class="modal-body">
+      <p class="modal-text" id="confirmar-texto"></p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="button button-secondary" data-confirm-cancel autofocus>Cancelar</button>
+      <button type="button" class="button button-danger" data-confirm-ok>Confirmar</button>
+    </div>
+  </dialog>
+<% } %>
 </body>
 </html>

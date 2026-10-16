@@ -6,6 +6,7 @@ import type { Database } from '../../db/client.js';
 import {
   attemptBanks,
   attempts,
+  folderBanks,
   questionBankGroups,
   questionBanks,
   questions,
@@ -14,6 +15,7 @@ import {
   users,
 } from '../../db/schema.js';
 import type { ParsedQuestion } from '../../markdown/parse-questions.js';
+import { listFolders, loadPlacements, type FolderSummary } from '../folders/folders.service.js';
 import { decryptGroupName, type GroupSummary } from '../groups/groups.service.js';
 import { decryptName } from '../users/users.service.js';
 
@@ -47,11 +49,13 @@ export interface ImportInput {
   content: Buffer;
   questions: ParsedQuestion[];
   groupIds: string[];
+  /** Pasta do dono em que o simulado já entra. */
+  folderId: string | null;
 }
 
 /**
- * Grava o arquivo original criptografado e, numa única transação, o simulado, o compartilhamento
- * e as questões. Se a transação falhar, o arquivo é apagado.
+ * Grava o arquivo original criptografado e, numa única transação, o simulado, o compartilhamento,
+ * a pasta e as questões. Se a transação falhar, o arquivo é apagado.
  */
 export async function importBank(
   db: Database,
@@ -83,6 +87,11 @@ export async function importBank(
         await tx
           .insert(questionBankGroups)
           .values(input.groupIds.map((groupId) => ({ bankId, groupId, sharedAt: now })));
+      }
+      if (input.folderId) {
+        await tx
+          .insert(folderBanks)
+          .values({ userId: input.ownerId, bankId, folderId: input.folderId, addedAt: now });
       }
       const rows = input.questions.map((question) => {
         const id = uuidv7();
@@ -212,6 +221,22 @@ export async function setBankGroups(db: Database, bankId: string, groupIds: stri
   });
 }
 
+/** O novo nome vale para todos que têm o simulado, inclusive nas tentativas e nos relatórios. */
+export async function renameBank(
+  db: Database,
+  crypto: CryptoService,
+  bankId: string,
+  title: string,
+) {
+  await db
+    .update(questionBanks)
+    .set({
+      titleEnc: crypto.encryptField(title, 'question_banks', 'title', bankId),
+      updatedAt: new Date(),
+    })
+    .where(eq(questionBanks.id, bankId));
+}
+
 /** Exclusão lógica: some para o dono e para quem nunca fez; quem já fez continua com ele. */
 export async function deleteBank(db: Database, bankId: string) {
   const now = new Date();
@@ -233,24 +258,27 @@ export interface BankCard {
   sharedWith: string[];
   /** Para os dos outros: quem enviou. */
   ownerName: string | null;
+  /** Em Meus simulados: a pasta em que o usuário o guardou. */
+  folderId: string | null;
 }
 
-export interface Panel {
+export interface FolderCard extends FolderSummary {
+  bankCount: number;
+}
+
+/** Meus simulados: os próprios, os recebidos e as pastas em que o usuário os separou. */
+export interface MyBanks {
   mine: BankCard[];
   received: BankCard[];
+  folders: FolderCard[];
+}
+
+export interface Panel extends MyBanks {
   groups: (GroupSummary & { banks: BankCard[] })[];
 }
 
-/**
- * Painel do usuário (seção 5.7): os próprios simulados, os recebidos (feitos, mas que não estão
- * mais em nenhum grupo dele) e uma seção para cada grupo com os simulados dos outros membros.
- */
-export async function loadPanel(
-  db: Database,
-  crypto: CryptoService,
-  userId: string,
-  myGroups: GroupSummary[],
-): Promise<Panel> {
+/** Monta os cartões, decifrando o nome de cada dono uma vez só. */
+function cardMaker(crypto: CryptoService) {
   const ownerNames = new Map<string, string>();
   const ownerName = (row: { ownerId: string; ownerNameEnc: string }) => {
     let name = ownerNames.get(row.ownerId);
@@ -267,9 +295,22 @@ export async function loadPanel(
     createdAt: bank.createdAt,
     sharedWith: [],
     ownerName: null,
+    folderId: null,
     ...extra,
   });
+  return { card, ownerName };
+}
 
+/**
+ * Meus simulados (seção 5.7): os próprios e os recebidos (feitos, mas que não estão mais em nenhum
+ * grupo do usuário), cada um com a pasta em que ele o guardou, e as pastas dele.
+ */
+export async function loadMyBanks(
+  db: Database,
+  crypto: CryptoService,
+  userId: string,
+  { card, ownerName } = cardMaker(crypto),
+): Promise<MyBanks> {
   const owned = await db
     .select()
     .from(questionBanks)
@@ -301,9 +342,11 @@ export async function loadPanel(
       decryptGroupName(crypto, row),
     ]);
   }
+  const placements = await loadPlacements(db, userId);
   const mine = owned.map((bank) =>
     card(bank, {
       sharedWith: (sharedWith.get(bank.id) ?? []).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+      folderId: placements.get(bank.id) ?? null,
     }),
   );
 
@@ -331,7 +374,35 @@ export async function loadPanel(
       ),
     )
     .orderBy(desc(questionBanks.createdAt));
-  const received = receivedRows.map((row) => card(row.bank, { ownerName: ownerName(row) }));
+  const received = receivedRows.map((row) =>
+    card(row.bank, { ownerName: ownerName(row), folderId: placements.get(row.bank.id) ?? null }),
+  );
+
+  // Conta só o que aparece em Meus simulados: um recebido que volta a um grupo sai da pasta.
+  const bankCount = new Map<string, number>();
+  for (const bank of [...mine, ...received]) {
+    if (bank.folderId) bankCount.set(bank.folderId, (bankCount.get(bank.folderId) ?? 0) + 1);
+  }
+  const folders = (await listFolders(db, crypto, userId)).map((folder) => ({
+    ...folder,
+    bankCount: bankCount.get(folder.id) ?? 0,
+  }));
+
+  return { mine, received, folders };
+}
+
+/**
+ * Painel do usuário (seção 5.7): Meus simulados, com as pastas, e uma seção para cada grupo com os
+ * simulados dos outros membros.
+ */
+export async function loadPanel(
+  db: Database,
+  crypto: CryptoService,
+  userId: string,
+  myGroups: GroupSummary[],
+): Promise<Panel> {
+  const cards = cardMaker(crypto);
+  const myBanks = await loadMyBanks(db, crypto, userId, cards);
 
   const groupRows = myGroups.length
     ? await db
@@ -360,10 +431,10 @@ export async function loadPanel(
     ...group,
     banks: groupRows
       .filter((row) => row.groupId === group.id)
-      .map((row) => card(row.bank, { ownerName: ownerName(row) })),
+      .map((row) => cards.card(row.bank, { ownerName: cards.ownerName(row) })),
   }));
 
-  return { mine, received, groups };
+  return { ...myBanks, groups };
 }
 
 /** Título do simulado, mesmo excluído (o relatório de quem fez continua mostrando o nome). */

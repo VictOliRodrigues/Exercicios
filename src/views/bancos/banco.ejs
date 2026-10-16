@@ -14,7 +14,7 @@
   const sharedIds = sharedGroups.map(function (group) { return group.id; });
 %>
 <nav class="breadcrumb" aria-label="Você está em">
-  <a href="/">Painel</a><span class="breadcrumb-separator" aria-hidden="true">›</span><span aria-current="page"><%= title %></span>
+  <a href="/">Painel</a><span class="breadcrumb-separator" aria-hidden="true">›</span><% if (folder) { %><a href="/pastas/<%= folder.id %>"><%= folder.name %></a><span class="breadcrumb-separator" aria-hidden="true">›</span><% } %><span aria-current="page"><%= title %></span>
 </nav>
 <div class="page-header">
   <div>
@@ -76,7 +76,7 @@
                   <td class="row-actions">
                     <div class="row-actions-inline row-actions-inline-tight">
                       <a class="button button-small button-primary" href="/simulados/<%= attempt.id %>">Continuar</a>
-                      <form method="post" action="/simulados/<%= attempt.id %>/descartar" class="inline-form" data-confirm="Descartar esta tentativa? As respostas dela serão apagadas.">
+                      <form method="post" action="/simulados/<%= attempt.id %>/descartar" class="inline-form" data-confirm-title="Descartar esta tentativa?" data-confirm="As respostas dela serão apagadas." data-confirm-button="Descartar">
                         <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
                         <button type="submit" class="button button-small button-danger-outline">Descartar</button>
                       </form>
@@ -93,7 +93,7 @@
                   <td class="row-actions">
                     <div class="row-actions-inline row-actions-inline-tight">
                       <a class="button button-small button-secondary" href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a>
-                      <form method="post" action="/simulados/<%= attempt.id %>/excluir" class="inline-form" data-confirm="Excluir este relatório? A nota e as respostas desta tentativa serão apagadas. Esta ação não pode ser desfeita.">
+                      <form method="post" action="/simulados/<%= attempt.id %>/excluir" class="inline-form" data-confirm-title="Excluir este relatório?" data-confirm="A nota e as respostas desta tentativa serão apagadas. Esta ação não pode ser desfeita." data-confirm-button="Excluir relatório">
                         <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
                         <button type="submit" class="button button-small button-danger-outline">Excluir</button>
                       </form>
@@ -116,6 +116,50 @@
       <button type="submit" class="button button-primary">Iniciar novo simulado</button>
     </form>
   </section>
+
+  <% if (canFile) { %>
+    <section class="card" aria-labelledby="organizar">
+      <h2 class="section-heading" id="organizar"><%= isOwner ? 'Nome e pasta' : 'Pasta' %></h2>
+      <div class="organize">
+        <% if (isOwner) { %>
+          <div>
+            <form method="post" action="/bancos/<%= bank.id %>/nome" class="inline-fields">
+              <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+              <div class="field">
+                <label for="nome-simulado">Nome</label>
+                <input type="text" id="nome-simulado" name="nome" value="<%= title %>" maxlength="<%= titleMaxLength %>" autocomplete="off" aria-describedby="nome-simulado-dica" required>
+              </div>
+              <button type="submit" class="button button-secondary">Renomear</button>
+            </form>
+            <p class="hint" id="nome-simulado-dica">O novo nome aparece para todos que têm este simulado, inclusive no histórico e nos relatórios.</p>
+          </div>
+        <% } %>
+        <% if (myFolders.length) { %>
+          <div>
+            <form method="post" action="/bancos/<%= bank.id %>/pasta" class="inline-fields">
+              <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+              <div class="field">
+                <label for="pasta-simulado">Pasta</label>
+                <select id="pasta-simulado" name="pasta" aria-describedby="pasta-simulado-dica">
+                  <option value="">Sem pasta</option>
+                  <% myFolders.forEach(function (item) { %>
+                    <option value="<%= item.id %>"<% if (folder && folder.id === item.id) { %> selected<% } %>><%= item.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <button type="submit" class="button button-secondary">Mover</button>
+            </form>
+            <p class="hint" id="pasta-simulado-dica">Só você vê as suas pastas.</p>
+          </div>
+        <% } else { %>
+          <div class="field">
+            <span>Pasta</span>
+            <p class="empty-note">Você ainda não tem pastas. <a href="/pastas/nova">Crie uma pasta</a> para separar os seus simulados por assunto.</p>
+          </div>
+        <% } %>
+      </div>
+    </section>
+  <% } %>
 
   <% if (isOwner) { %>
     <section class="card" aria-labelledby="compartilhar">
@@ -153,7 +197,7 @@
           <h3>Excluir simulado</h3>
           <p>O simulado some do seu painel e do painel de quem o recebeu por grupo. Quem já fez continua com ele, e os resultados de todos ficam guardados. Esta ação não pode ser desfeita.</p>
         </div>
-        <form method="post" action="/bancos/<%= bank.id %>/excluir" class="inline-form" data-confirm="Excluir o simulado <%= title %>? Esta ação não pode ser desfeita.">
+        <form method="post" action="/bancos/<%= bank.id %>/excluir" class="inline-form" data-confirm-title="Excluir o simulado <%= title %>?" data-confirm="Ele some do seu painel e do painel de quem o recebeu por grupo. Quem já fez continua com ele. Esta ação não pode ser desfeita." data-confirm-button="Excluir simulado">
           <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
           <button type="submit" class="button button-danger">Excluir simulado</button>
         </form>

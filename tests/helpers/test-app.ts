@@ -17,6 +17,8 @@ const TABLES = [
   'attempt_questions',
   'attempt_banks',
   'attempts',
+  'folder_banks',
+  'folders',
   'questions',
   'question_bank_groups',
   'question_banks',

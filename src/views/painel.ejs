@@ -44,32 +44,35 @@
   <% } %>
 
   <section class="card list-card" aria-labelledby="meus-simulados">
+    <%
+      const myCount = panel.mine.length + panel.received.length;
+      const myCounts = [];
+      if (myCount) myCounts.push(plural(myCount, 'simulado', 'simulados'));
+      if (panel.folders.length) myCounts.push(plural(panel.folders.length, 'pasta', 'pastas'));
+      // Os que estão numa pasta aparecem só dentro dela.
+      const loose = panel.mine.concat(panel.received).filter(function (bank) { return !bank.folderId; });
+    %>
     <div class="list-card-header">
       <h2 id="meus-simulados">Meus simulados</h2>
-      <% const myCount = panel.mine.length + panel.received.length; %>
-      <% if (myCount) { %><span class="list-card-count"><%= plural(myCount, 'simulado', 'simulados') %></span><% } %>
+      <% if (myCounts.length) { %><span class="list-card-count"><%= myCounts.join(' · ') %></span><% } %>
+      <% if (myCounts.length) { %>
+        <a class="button button-small button-secondary list-card-action" href="/pastas/nova">
+          <%- include('partials/icon', { iconName: 'folder-plus', iconClass: 'button-icon' }) %>
+          Nova pasta
+        </a>
+      <% } %>
     </div>
-    <% if (!myCount) { %>
+    <% if (!myCounts.length) { %>
       <p class="list-card-empty">
         Você ainda não importou nenhum simulado. <a href="/bancos/importar">Importe um arquivo .md</a> gerado no ChatGPT, ou o modelo de exemplo para testar.
       </p>
     <% } else { %>
       <ul class="list-card-rows">
-        <% panel.mine.forEach(function (bank) { %>
-          <%- include('partials/bank-item', {
-            bank,
-            label: bank.sharedWith.length ? 'Compartilhado com ' + formatList(bank.sharedWith) : 'Privado',
-            badgeClass: bank.sharedWith.length ? 'badge-info' : 'badge-muted',
-            badgeIcon: bank.sharedWith.length ? 'users' : 'lock',
-          }) %>
+        <% panel.folders.forEach(function (folder) { %>
+          <%- include('partials/folder-item', { folder }) %>
         <% }) %>
-        <% panel.received.forEach(function (bank) { %>
-          <%- include('partials/bank-item', {
-            bank,
-            label: 'Recebido de ' + bank.ownerName,
-            badgeClass: 'badge-teal',
-            badgeIcon: 'inbox',
-          }) %>
+        <% loose.forEach(function (bank) { %>
+          <%- include('partials/my-bank-item', { bank }) %>
         <% }) %>
       </ul>
     <% } %>
@@ -137,7 +140,7 @@
               <td class="row-actions">
                 <div class="row-actions-inline">
                   <a class="link-strong" href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a>
-                  <form method="post" action="/simulados/<%= attempt.id %>/excluir" class="inline-form" data-confirm="Excluir este relatório? A nota e as respostas desta tentativa serão apagadas. Esta ação não pode ser desfeita.">
+                  <form method="post" action="/simulados/<%= attempt.id %>/excluir" class="inline-form" data-confirm-title="Excluir este relatório?" data-confirm="A nota e as respostas desta tentativa serão apagadas. Esta ação não pode ser desfeita." data-confirm-button="Excluir relatório">
                     <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
                     <input type="hidden" name="voltar" value="painel">
                     <button type="submit" class="button button-small button-ghost button-ghost-danger" aria-label="Excluir o relatório de <%= formatDateTime(attempt.finishedAt) %>">Excluir</button>

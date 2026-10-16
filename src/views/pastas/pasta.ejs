@@ -1,0 +1,80 @@
+<%- include('../partials/head', { pageWidth: 880 }) %>
+<nav class="breadcrumb" aria-label="Você está em">
+  <a href="/">Painel</a><span class="breadcrumb-separator" aria-hidden="true">›</span><span aria-current="page"><%= folder.name %></span>
+</nav>
+<div class="page-header">
+  <div class="folder-heading">
+    <span class="folder-icon folder-icon-lg"><%- include('../partials/icon', { iconName: 'folder' }) %></span>
+    <div>
+      <h1 class="title-lg"><%= folder.name %></h1>
+      <div class="page-meta">
+        <strong><%= plural(banks.length, 'simulado', 'simulados') %></strong>
+        <span class="badge badge-muted"><%- include('../partials/icon', { iconName: 'lock' }) %>Só você vê esta pasta</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stack stack-tight">
+  <section class="card list-card" aria-labelledby="simulados-da-pasta">
+    <div class="list-card-header">
+      <h2 id="simulados-da-pasta">Simulados</h2>
+    </div>
+    <% if (!banks.length) { %>
+      <p class="list-card-empty">
+        A pasta está vazia.
+        <% if (choices.length) { %>Marque abaixo os simulados que vão para ela.<% } else { %><a href="/bancos/importar">Importe um simulado</a> e escolha esta pasta na importação.<% } %>
+      </p>
+    <% } else { %>
+      <ul class="list-card-rows">
+        <% banks.forEach(function (bank) { %>
+          <%- include('../partials/my-bank-item', { bank, removeFrom: folder.id }) %>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+
+  <% if (choices.length) { %>
+    <section class="card list-card" aria-labelledby="adicionar">
+      <form method="post" action="/pastas/<%= folder.id %>/simulados">
+        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+        <div class="list-card-header">
+          <h2 id="adicionar">Adicionar simulados</h2>
+          <span class="list-card-count">Os que estão em outra pasta mudam para esta</span>
+        </div>
+        <%- include('../partials/bank-picks', { choices, selected: [] }) %>
+        <div class="list-card-footer">
+          <button type="submit" class="button button-secondary">Guardar na pasta</button>
+        </div>
+      </form>
+    </section>
+  <% } %>
+
+  <section class="card" aria-labelledby="nome-da-pasta">
+    <h2 class="section-heading" id="nome-da-pasta">Nome da pasta</h2>
+    <%- include('../partials/errors', { errors: error ? [error] : [] }) %>
+    <form method="post" action="/pastas/<%= folder.id %>" class="inline-fields">
+      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+      <label class="field">
+        <span>Nome</span>
+        <input type="text" name="nome" value="<%= nome %>" maxlength="<%= nameMaxLength %>" autocomplete="off" required>
+      </label>
+      <button type="submit" class="button button-secondary">Renomear</button>
+    </form>
+  </section>
+
+  <section class="card danger-card" aria-labelledby="area-de-perigo">
+    <h2 class="danger-card-head" id="area-de-perigo">Área de perigo</h2>
+    <div class="danger-card-body">
+      <div class="danger-card-text">
+        <h3>Excluir pasta</h3>
+        <p>Só a pasta é apagada. Os simulados dela voltam para Meus simulados, sem pasta, com todas as tentativas e relatórios.</p>
+      </div>
+      <form method="post" action="/pastas/<%= folder.id %>/excluir" class="inline-form" data-confirm-title="Excluir a pasta <%= folder.name %>?" data-confirm="Os simulados dela voltam para Meus simulados, sem pasta. Nenhum simulado, tentativa ou relatório é apagado." data-confirm-button="Excluir pasta">
+        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+        <button type="submit" class="button button-danger">Excluir pasta</button>
+      </form>
+    </div>
+  </section>
+</div>
+<%- include('../partials/foot') %>

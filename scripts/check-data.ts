@@ -4,8 +4,9 @@ import { createFileStore } from '../src/crypto/file-store.js';
 import { createCryptoService } from '../src/crypto/index.js';
 import { createKeyring } from '../src/crypto/keys.js';
 import { createDatabase } from '../src/db/client.js';
-import { questionBanks, questions, studyGroups, users } from '../src/db/schema.js';
+import { folders, questionBanks, questions, studyGroups, users } from '../src/db/schema.js';
 import { decryptQuestion, decryptTitle } from '../src/modules/banks/banks.service.js';
+import { decryptFolderName } from '../src/modules/folders/folders.service.js';
 import { decryptGroupName } from '../src/modules/groups/groups.service.js';
 import { decryptEmail, decryptName, decryptPhone } from '../src/modules/users/users.service.js';
 
@@ -41,6 +42,9 @@ try {
   const groupRows = await db.select().from(studyGroups);
   for (const row of groupRows) check('grupo', row.id, () => decryptGroupName(crypto, row));
 
+  const folderRows = await db.select().from(folders);
+  for (const row of folderRows) check('pasta', row.id, () => decryptFolderName(crypto, row));
+
   const bankRows = await db.select().from(questionBanks);
   let questionCount = 0;
   for (const bank of bankRows) {
@@ -63,7 +67,7 @@ try {
   }
 
   console.log(
-    `Conferidos: ${userRows.length} usuários, ${groupRows.length} grupos, ` +
+    `Conferidos: ${userRows.length} usuários, ${groupRows.length} grupos, ${folderRows.length} pastas, ` +
       `${bankRows.length} simulados (e seus arquivos) e ${questionCount} questões.`,
   );
   if (failures.length) {

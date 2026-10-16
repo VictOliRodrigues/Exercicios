@@ -50,11 +50,12 @@ export function fixtures(ctx: () => TestContext) {
   async function upload(
     user: ReturnType<typeof agent>,
     content: string | Buffer,
-    options: { fileName?: string; groups?: string[] } = {},
+    options: { fileName?: string; groups?: string[]; folder?: string } = {},
   ) {
     const _csrf = await csrfFrom(user, '/bancos/importar');
     let req = user.post('/bancos').field('_csrf', _csrf);
     for (const group of options.groups ?? []) req = req.field('grupos', group);
+    if (options.folder) req = req.field('pasta', options.folder);
     return req.attach('arquivo', Buffer.from(content), options.fileName ?? 'questoes.md');
   }
 
@@ -62,7 +63,7 @@ export function fixtures(ctx: () => TestContext) {
   async function importBank(
     user: ReturnType<typeof agent>,
     content: string,
-    options: { fileName?: string; groups?: string[] } = {},
+    options: { fileName?: string; groups?: string[]; folder?: string } = {},
   ) {
     const res = await upload(user, content, options);
     const match = /^\/bancos\/([0-9a-f-]{36})$/.exec(res.headers.location ?? '');

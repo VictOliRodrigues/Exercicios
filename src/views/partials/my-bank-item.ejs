@@ -1,0 +1,18 @@
+<%# Linha de Meus simulados: o próprio ("Privado" ou "Compartilhado com") ou o recebido. %>
+<% if (bank.ownerName) { %>
+  <%- include('bank-item', {
+    bank,
+    label: 'Recebido de ' + bank.ownerName,
+    badgeClass: 'badge-teal',
+    badgeIcon: 'inbox',
+    removeFrom: locals.removeFrom,
+  }) %>
+<% } else { %>
+  <%- include('bank-item', {
+    bank,
+    label: bank.sharedWith.length ? 'Compartilhado com ' + formatList(bank.sharedWith) : 'Privado',
+    badgeClass: bank.sharedWith.length ? 'badge-info' : 'badge-muted',
+    badgeIcon: bank.sharedWith.length ? 'users' : 'lock',
+    removeFrom: locals.removeFrom,
+  }) %>
+<% } %>

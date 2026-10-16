@@ -18,6 +18,7 @@ import { adminUsersRoutes } from './modules/admin-users/admin-users.routes.js';
 import { attemptRoutes } from './modules/attempts/attempts.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { bankRoutes, bankUploadParser } from './modules/banks/banks.routes.js';
+import { folderRoutes } from './modules/folders/folders.routes.js';
 import { homeRoutes } from './modules/home/home.routes.js';
 
 export interface AppDeps {
@@ -109,6 +110,7 @@ export function createApp(deps: AppDeps) {
   app.use(homeRoutes(deps));
   app.use(authRoutes(deps));
   app.use(bankRoutes(deps));
+  app.use(folderRoutes(deps));
   app.use(attemptRoutes(deps));
   app.use('/admin', adminUsersRoutes(deps));
   app.use('/admin', adminGroupsRoutes(deps));
