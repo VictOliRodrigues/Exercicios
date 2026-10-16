@@ -86,7 +86,12 @@ export function fixtures(ctx: () => TestContext) {
   async function startAttempt(
     user: ReturnType<typeof agent>,
     bankId: string,
-    options: { quantidade?: string; minutos?: string } = {},
+    options: {
+      quantidade?: string;
+      minutos?: string;
+      modoQuantidade?: string;
+      modoTempo?: string;
+    } = {},
   ) {
     const res = await postForm(user, `/bancos/${bankId}`, `/bancos/${bankId}/simulados`, options);
     const match = /^\/simulados\/([0-9a-f-]{36})$/.exec(res.headers.location ?? '');

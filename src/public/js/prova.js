@@ -57,6 +57,12 @@ if (form) {
     status.textContent = message;
   };
 
+  // "✓ Resposta salva" no topo de cada questão: some ao marcar e volta quando o servidor confirma.
+  const showSaved = (number, saved) => {
+    const badge = form.querySelector(`[data-saved-for="${number}"]`);
+    if (badge) badge.hidden = !saved;
+  };
+
   // As respostas vão uma de cada vez, na ordem dos cliques: a última marcada é a que fica salva.
   let queue = Promise.resolve();
 
@@ -75,6 +81,7 @@ if (form) {
       }
       if (!response.ok || !data) throw new Error(`HTTP ${response.status}`);
       if (counter) counter.textContent = data.respondidas;
+      showSaved(number, true);
       setStatus('');
     } catch {
       setStatus(
@@ -87,6 +94,7 @@ if (form) {
     const input = event.target;
     if (!input.matches('input[type="radio"][name^="q"]')) return;
     const number = input.name.slice(1);
+    showSaved(number, false);
     const mapItem = form.querySelector(`[data-map-number="${number}"]`);
     if (mapItem) {
       mapItem.classList.add('is-answered');
@@ -106,6 +114,21 @@ if (form) {
     question.querySelector('input')?.focus({ preventScroll: true });
     if (map && window.matchMedia('(max-width: 760px)').matches) map.open = false;
   });
+
+  // Finalizar com tudo respondido: confirma numa janela antes de enviar. Com questões em branco, o
+  // servidor responde com a própria confirmação, que lista quais são.
+  const finishButton = form.querySelector('[data-finish-button]');
+  const finishDialog = document.getElementById('confirmar-finalizar');
+  if (finishButton && finishDialog) {
+    finishButton.addEventListener('click', (event) => {
+      if (form.querySelector('.map-item:not(.is-answered)')) return;
+      event.preventDefault();
+      finishDialog.showModal();
+    });
+    finishDialog.querySelector('[data-close-dialog]').addEventListener('click', () => {
+      finishDialog.close();
+    });
+  }
 
   // No celular, o mapa começa recolhido.
   if (map && window.matchMedia('(max-width: 760px)').matches) map.open = false;

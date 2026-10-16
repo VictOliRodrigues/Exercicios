@@ -1,4 +1,4 @@
-# Simulados
+# Sabatina
 
 Sistema web para fazer simulados de múltipla escolha a partir de arquivos `.md`. O plano completo, com as regras e as decisões, está em [PLANO.md](PLANO.md).
 

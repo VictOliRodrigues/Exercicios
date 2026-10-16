@@ -106,18 +106,20 @@ describe('iniciar simulado', () => {
 
     const first = await ana.get(`/simulados/${attemptId}`);
     expect(first.status).toBe(200);
-    expect(first.text).toContain('Página 1 de 3');
-    expect(first.text).toContain('0</strong>/25 respondidas');
+    expect(first.text).toContain('<dd class="exam-stat-value">1 de 3</dd>');
+    expect(first.text).toContain('data-answered-count>0</span>/25');
     expect(questionCount(first.text)).toBe(10);
     expect(first.text).toContain('Próxima →');
     expect(first.text).not.toContain(`formaction="/simulados/${attemptId}/finalizar"`);
 
     const last = await ana.get(`/simulados/${attemptId}?pagina=3`);
-    expect(last.text).toContain('Página 3 de 3');
+    expect(last.text).toContain('<dd class="exam-stat-value">3 de 3</dd>');
     expect(questionCount(last.text)).toBe(5);
     expect(last.text).toContain(`formaction="/simulados/${attemptId}/finalizar"`);
     // Página fora do intervalo cai na mais próxima.
-    expect((await ana.get(`/simulados/${attemptId}?pagina=99`)).text).toContain('Página 3 de 3');
+    expect((await ana.get(`/simulados/${attemptId}?pagina=99`)).text).toContain(
+      '<dd class="exam-stat-value">3 de 3</dd>',
+    );
   });
 
   it('o HTML da prova não contém o gabarito: só as letras na ordem embaralhada', async () => {
@@ -150,9 +152,30 @@ describe('iniciar simulado', () => {
     expect(await placement(attemptId)).toHaveLength(5);
 
     const page = (await ana.get(`/simulados/${attemptId}`)).text;
-    expect(page).toContain('Página 1 de 1');
-    expect(page).toContain('Restante');
+    expect(page).toContain('<dd class="exam-stat-value">1 de 1</dd>');
+    expect(page).toContain('Tempo restante');
     expect(page).toMatch(/data-remaining="(1800|1799)"/);
+  });
+
+  it('"Todas" e "Sem limite" marcados ignoram os números preenchidos ao lado', async () => {
+    const { agent: ana } = await loggedUser('Ana Souza', 'ana@exemplo.com');
+    const bankId = await importBank(ana, simpleBank('Modos', 25));
+
+    const all = await startAttempt(ana, bankId, {
+      modoQuantidade: 'todas',
+      quantidade: '5',
+      modoTempo: 'sem-limite',
+      minutos: '30',
+    });
+    expect(await attemptRow(all)).toMatchObject({ totalQuestions: 25, timeLimitSeconds: null });
+
+    const sampled = await startAttempt(ana, bankId, {
+      modoQuantidade: 'sortear',
+      quantidade: '5',
+      modoTempo: 'limite',
+      minutos: '30',
+    });
+    expect(await attemptRow(sampled)).toMatchObject({ totalQuestions: 5, timeLimitSeconds: 1800 });
   });
 
   it('opções inválidas não iniciam e explicam o motivo', async () => {
@@ -207,7 +230,7 @@ describe('fazer a prova', () => {
     const page = (await ana.get(`/simulados/${attemptId}`)).text;
     expect(page).toMatch(/name="q1" value="2" checked/);
     expect(page.match(/ checked/g)).toHaveLength(1);
-    expect(page).toContain('1</strong>/12 respondidas');
+    expect(page).toContain('data-answered-count>1</span>/12');
     expect(Number(/data-elapsed="(\d+)"/.exec(page)![1])).toBeGreaterThanOrEqual(90);
     expect(page).toContain('00:01:3');
 
@@ -241,7 +264,7 @@ describe('fazer a prova', () => {
     );
 
     const page2 = (await ana.get(`/simulados/${attemptId}?pagina=2`)).text;
-    expect(page2).toContain('3</strong>/25 respondidas');
+    expect(page2).toContain('data-answered-count>3</span>/25');
     expect(page2).toMatch(/class="map-item is-answered"[^>]*data-map-number="1"/);
     expect(page2).toMatch(/class="map-item is-current-page"[^>]*data-map-number="11"/);
     expect(page2).toContain('← Anterior');
@@ -281,7 +304,7 @@ describe('fazer a prova', () => {
 
     const panel = (await ana.get('/')).text;
     expect(panel).toContain('Em andamento');
-    expect(panel).toContain('0/25 respondidas');
+    expect(panel).toContain('0 de 25 respondidas');
     expect(panel).toContain('Histórico');
     expect(panel).toContain(`/simulados/${first}/relatorio`);
   });
@@ -379,9 +402,9 @@ describe('finalizar e relatório', () => {
       const item = new RegExp(`id="questao-${number}"[\\s\\S]*?</li>`).exec(report)![0];
       const seen = wrongLetter(q);
       expect(item).toContain(
-        `<strong>${letterLabel(seen)})</strong> ${OPTION_TEXTS[q.optionOrder[seen]!]}`,
+        `Sua resposta:</strong> ${letterLabel(seen)}) ${OPTION_TEXTS[q.optionOrder[seen]!]}`,
       );
-      expect(item).toContain(`<strong>${letterLabel(rightLetter(q))})</strong> b`);
+      expect(item).toContain(`Correta:</strong> ${letterLabel(rightLetter(q))}) b`);
     }
   });
 
@@ -427,7 +450,9 @@ describe('finalizar e relatório', () => {
       ),
     );
     expect(confirm.status).toBe(200);
-    expect(confirm.text).toContain('Você deixou 7 questões em branco (3, 8, 12, 15, 19, 21, 24).');
+    expect(confirm.text).toContain(
+      'Você deixou <strong>7 questões em branco</strong> (3, 8, 12, 15, 19, 21, 24).',
+    );
     expect(confirm.text).toContain('Questões em branco contam como erradas.');
     expect(confirm.text).toContain('Sim, finalizar');
     expect(confirm.text).toContain('Não, responder as em branco');
@@ -442,7 +467,7 @@ describe('finalizar e relatório', () => {
     expect(after.filter((r) => r.page === 3).map((r) => r.number)).toEqual(blank);
 
     const page3 = (await ana.get(`/simulados/${attemptId}?pagina=3`)).text;
-    expect(page3).toContain('Página 3 de 3');
+    expect(page3).toContain('<dd class="exam-stat-value">3 de 3</dd>');
     for (const number of blank) expect(page3).toContain(`id="questao-${number}"`);
     expect(page3).toContain(`formaction="/simulados/${attemptId}/finalizar"`);
 
@@ -458,7 +483,7 @@ describe('finalizar e relatório', () => {
           .map((r) => [r.number, rightLetter(r)]),
       ),
     );
-    expect(second.text).toContain('Você deixou 2 questões em branco (19, 24).');
+    expect(second.text).toContain('Você deixou <strong>2 questões em branco</strong> (19, 24).');
     const again = await examPost(ana, attemptId, 'reorganizar');
     expect(again.headers.location).toBe(`/simulados/${attemptId}?pagina=4`);
     expect(pageSizes(await placement(attemptId))).toEqual([10, 10, 3, 2]);
@@ -563,7 +588,7 @@ describe('tempo limite', () => {
     const panel = (await ana.get('/')).text;
     expect(panel).not.toContain('Em andamento');
     expect(panel).toContain('Tempo esgotado');
-    expect(panel).toContain('<strong>2,5</strong>');
+    expect(panel).toContain('<strong>2,5</strong><span class="muted"> · 1 de 4</span>');
     expect(await attemptRow(attemptId)).toMatchObject({
       status: 'finished',
       finishReason: 'time',
@@ -572,8 +597,8 @@ describe('tempo limite', () => {
 
     const report = (await ana.get(`/simulados/${attemptId}/relatorio`)).text;
     expect(report).toContain('Encerrado por tempo esgotado');
-    expect(report).toContain('<dt>Tempo limite</dt>\n        <dd>10 min</dd>');
-    expect(report).toContain('<dt>Tempo total</dt>\n      <dd>10 min</dd>');
+    expect(report).toContain('<span class="stat-clock">00:10:00</span>');
+    expect(report).toContain('Tempo limite: 00:10:00');
     expect(report).toContain('sendo 3 em branco');
   });
 

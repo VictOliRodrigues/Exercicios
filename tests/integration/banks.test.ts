@@ -48,9 +48,9 @@ describe('importação', () => {
     const page = await ana.get(bankPath);
     expect(page.status).toBe(200);
     expect(page.text).toContain('Modelo de simulado');
-    expect(page.text).toContain('5 questões importadas.');
+    expect(page.text).toContain('5 questões importadas');
     expect(page.text).toContain('Privado');
-    expect(page.text).not.toContain('Avisos da importação');
+    expect(page.text).not.toContain('o simulado foi importado mesmo assim');
     // O resultado da importação aparece uma vez só.
     expect((await ana.get(bankPath)).text).not.toContain('questões importadas');
 
@@ -81,7 +81,7 @@ describe('importação', () => {
     const bankId = await importBank(ana, md);
 
     const page = await ana.get(`/bancos/${bankId}`);
-    expect(page.text).toContain('Questão 1: o HTML foi removido.');
+    expect(page.text).toContain('<strong>Questão 1:</strong> o HTML foi removido.');
 
     const [row] = await ctx.db.select().from(questions).where(eq(questions.bankId, bankId));
     const payload = JSON.parse(
@@ -100,10 +100,14 @@ describe('importação', () => {
     const res = await upload(ana, md);
 
     expect(res.status).toBe(422);
-    expect(res.text).toContain('3 problemas encontrados');
-    expect(res.text).toContain('Questão 1 (linha 6): encontrei 3 alternativas, esperado 4.');
-    expect(res.text).toContain('Questão 2 (linha 10): enunciado vazio.');
-    expect(res.text).toContain('Questão 2 (linha 12): nenhuma alternativa marcada como correta.');
+    expect(res.text).toContain('o arquivo tem 3 problemas');
+    expect(res.text).toContain(
+      '<strong>Questão 1 · linha 6</strong> Encontrei 3 alternativas, esperado 4.',
+    );
+    expect(res.text).toContain('<strong>Questão 2 · linha 10</strong> Enunciado vazio.');
+    expect(res.text).toContain(
+      '<strong>Questão 2 · linha 12</strong> Nenhuma alternativa marcada como correta.',
+    );
     expect(res.text).toContain('Copiar mensagem');
     expect(res.text).toContain('1. Questão 1 (&#34;Qual?&#34;): tem 3 alternativas');
     expect(res.text).toContain('me envie novamente o arquivo .md COMPLETO');
@@ -149,7 +153,7 @@ describe('importação', () => {
     const md = simpleBank('x').replace('# x\n\n', 'Introdução solta.\n\n');
     const bankId = await importBank(ana, md, { fileName: 'Revisão_de_Português.md' });
     const page = await ana.get(`/bancos/${bankId}`);
-    expect(page.text).toContain('<h1>Revisão de Português</h1>');
+    expect(page.text).toContain('<h1 class="title-lg">Revisão de Português</h1>');
     expect(page.text).toContain('O texto antes da 1ª questão foi ignorado.');
   });
 

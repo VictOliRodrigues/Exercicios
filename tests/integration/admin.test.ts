@@ -148,7 +148,7 @@ describe('admin: lista, edição e desativação', () => {
     const form = await admin.get(`/admin/usuarios/${id}`);
     expect(form.text).toContain('value="maria@exemplo.com"');
     expect(form.text).toContain('value="(48) 99999-0000"');
-    expect(form.text).toContain('trocar o e-mail troca o login');
+    expect(form.text).toContain('Trocar o e-mail troca o login');
 
     const taken = await postForm(admin, `/admin/usuarios/${id}`, `/admin/usuarios/${id}`, {
       nome: 'Maria Souza',
@@ -208,7 +208,7 @@ describe('admin: redefinir senha', () => {
       .where(eq(users.id, id));
 
     const page = await admin.get(`/admin/usuarios/${id}/redefinir-senha`);
-    expect(page.text).toContain('Pediu a redefinição em');
+    expect(page.text).toContain('<dt class="caps-label">Pedido em</dt>');
 
     const res = await postForm(
       admin,

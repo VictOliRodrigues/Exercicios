@@ -58,6 +58,22 @@ type ProfileForm = { nome: string; email: string; telefone: string };
 
 const emptyForm: ProfileForm = { nome: '', email: '', telefone: '' };
 
+/** Janela aberta por cima da lista de usuários. */
+type UsersModal =
+  | { kind: 'editar'; userId: string; form: ProfileForm; errors: string[] }
+  | {
+      kind: 'senha';
+      user: {
+        id: string;
+        name: string;
+        email: string;
+        phone: string | null;
+        resetRequestedAt: Date | null;
+      };
+      error: string | null;
+    }
+  | { kind: 'senha-gerada'; heading: string; email: string; password: string };
+
 const formValues = (req: Request): ProfileForm => ({
   nome: textField(req, 'nome', NAME_MAX_LENGTH),
   email: textField(req, 'email', 254),
@@ -84,22 +100,22 @@ export function adminUsersRoutes({ db, crypto }: AppDeps): Router {
   async function renderList(
     res: Response,
     status: number,
-    view: { form: ProfileForm; errors: string[] } = { form: emptyForm, errors: [] },
+    view: { form?: ProfileForm; errors?: string[]; modal?: UsersModal } = {},
   ) {
     res.status(status).render('admin/usuarios', {
       title: 'Usuários',
       users: await listManagedUsers(db, crypto),
-      ...view,
+      form: view.form ?? emptyForm,
+      errors: view.errors ?? [],
+      modal: view.modal ?? null,
     });
   }
 
   /** A senha gerada aparece uma única vez, na resposta do próprio POST; nunca vai para a sessão. */
-  function renderGeneratedPassword(
+  const renderGeneratedPassword = (
     res: Response,
-    view: { heading: string; name: string; email: string; password: string },
-  ) {
-    res.render('admin/senha-gerada', { title: view.heading, ...view });
-  }
+    view: { heading: string; email: string; password: string },
+  ) => renderList(res, 200, { modal: { kind: 'senha-gerada', ...view } });
 
   router.get('/usuarios', async (_req, res) => {
     await renderList(res, 200);
@@ -132,7 +148,6 @@ export function adminUsersRoutes({ db, crypto }: AppDeps): Router {
     if (password.generated) {
       return renderGeneratedPassword(res, {
         heading: 'Cadastro criado',
-        name: nome,
         email,
         password: password.password,
       });
@@ -148,15 +163,17 @@ export function adminUsersRoutes({ db, crypto }: AppDeps): Router {
   router.get('/usuarios/:id', async (req, res) => {
     const user = await managedUser(req);
     if (!user) return renderNotFound(req, res);
-    res.render('admin/usuario-editar', {
-      title: 'Editar usuário',
-      userId: user.id,
-      form: {
-        nome: decryptName(crypto, user),
-        email: decryptEmail(crypto, user),
-        telefone: formatPhone(decryptPhone(crypto, user)),
+    await renderList(res, 200, {
+      modal: {
+        kind: 'editar',
+        userId: user.id,
+        form: {
+          nome: decryptName(crypto, user),
+          email: decryptEmail(crypto, user),
+          telefone: formatPhone(decryptPhone(crypto, user)),
+        },
+        errors: [],
       },
-      errors: [],
     });
   });
 
@@ -170,11 +187,8 @@ export function adminUsersRoutes({ db, crypto }: AppDeps): Router {
       errors.push('Este e-mail já é usado por outro usuário.');
     }
     if (errors.length || !parsed.success) {
-      return res.status(422).render('admin/usuario-editar', {
-        title: 'Editar usuário',
-        userId: user.id,
-        form: formValues(req),
-        errors,
+      return renderList(res, 422, {
+        modal: { kind: 'editar', userId: user.id, form: formValues(req), errors },
       });
     }
 
@@ -201,16 +215,18 @@ export function adminUsersRoutes({ db, crypto }: AppDeps): Router {
   });
 
   const renderResetForm = (res: Response, status: number, user: UserRow, error: string | null) =>
-    res.status(status).render('admin/usuario-senha', {
-      title: 'Redefinir senha',
-      user: {
-        id: user.id,
-        name: decryptName(crypto, user),
-        email: decryptEmail(crypto, user),
-        phone: decryptPhone(crypto, user),
-        resetRequestedAt: user.passwordResetRequestedAt,
+    renderList(res, status, {
+      modal: {
+        kind: 'senha',
+        user: {
+          id: user.id,
+          name: decryptName(crypto, user),
+          email: decryptEmail(crypto, user),
+          phone: decryptPhone(crypto, user),
+          resetRequestedAt: user.passwordResetRequestedAt,
+        },
+        error,
       },
-      error,
     });
 
   router.get('/usuarios/:id/redefinir-senha', async (req, res) => {
@@ -230,7 +246,6 @@ export function adminUsersRoutes({ db, crypto }: AppDeps): Router {
     if (password.generated) {
       return renderGeneratedPassword(res, {
         heading: 'Senha redefinida',
-        name,
         email: decryptEmail(crypto, user),
         password: password.password,
       });

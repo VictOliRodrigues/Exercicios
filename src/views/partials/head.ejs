@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= locals.title ? title + ' · ' + appName : appName %></title>
+  <title><%= appName %></title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/app.css">
   <script src="/js/app.js" defer></script>
@@ -37,17 +37,17 @@
       <div class="user-menu">
         <span class="user-name"><%= currentUser.name %></span>
         <% if (!currentUser.mustChangePassword) { %>
-          <a href="/alterar-senha">Alterar senha</a>
+          <a href="/alterar-senha"<% if (locals.currentPath === '/alterar-senha') { %> aria-current="page"<% } %>>Alterar senha</a>
         <% } %>
         <form method="post" action="/logout" class="inline-form">
           <input type="hidden" name="_csrf" value="<%= locals.csrfToken ? csrfToken() : '' %>">
-          <button type="submit" class="link-button">Sair</button>
+          <button type="submit" class="topbar-button">Sair</button>
         </form>
       </div>
     </div>
   </header>
 <% } %>
-<main class="<%= locals.layout === 'centered' ? 'centered' : 'page' %>">
+<main class="<%= locals.layout === 'centered' ? 'centered' : 'page' + (locals.pageWidth ? ' page-' + pageWidth : '') %>">
 <% (locals.flash || []).forEach(function (item) { %>
   <div class="alert alert-<%= item.type %>" role="status"><%= item.message %></div>
 <% }) %>

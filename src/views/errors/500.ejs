@@ -1,9 +1,14 @@
 <%- include('../partials/head', { layout: 'centered' }) %>
-<section class="card narrow-card error-card">
-  <p class="error-code" aria-hidden="true">Ops</p>
-  <h1>Algo deu errado</h1>
-  <p class="muted">Tente novamente em instantes. Se o problema continuar, informe este código ao administrador:</p>
-  <p><code class="reference"><%= reference %></code></p>
+<section class="error-page">
+  <% if (!locals.currentUser) { %><%- include('../partials/auth-brand') %><% } %>
+  <span class="error-status"><%- include('../partials/icon', { iconName: 'circle-alert' }) %></span>
+  <p class="error-label">Erro <%= status %></p>
+  <h1 class="error-title">Algo deu errado</h1>
+  <p class="error-text">Tivemos um problema ao processar o seu pedido. Tente de novo em alguns minutos. Se o erro continuar, passe o código abaixo para o administrador.</p>
+  <div class="reference-box">
+    <span class="reference-label">Código de referência</span>
+    <code class="reference"><%= reference %></code>
+  </div>
   <a class="button button-primary" href="/">Ir para o início</a>
 </section>
 <%- include('../partials/foot') %>

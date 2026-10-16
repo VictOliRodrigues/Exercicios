@@ -1,0 +1,29 @@
+<dialog class="modal" open aria-labelledby="modal-titulo" data-close-href="/admin/usuarios">
+  <div class="modal-header">
+    <span class="modal-status"><%- include('../../partials/icon', { iconName: 'check' }) %></span>
+    <h2 class="modal-title" id="modal-titulo"><%= modal.heading %></h2>
+  </div>
+  <div class="modal-body">
+    <dl class="modal-fields">
+      <div>
+        <dt class="caps-label">E-mail (login)</dt>
+        <dd><%= modal.email %></dd>
+      </div>
+      <div>
+        <dt class="caps-label">Senha temporária</dt>
+        <dd><code class="secret" id="senha-gerada"><%= modal.password %></code></dd>
+      </div>
+    </dl>
+    <div class="alert alert-warning alert-with-icon" role="status">
+      <%- include('../../partials/alert-icon', { icon: 'warning' }) %>
+      <span><strong>Copie a senha agora.</strong> Ela é exibida uma única vez: depois de fechar esta janela, não será possível vê-la de novo.</span>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="button button-secondary" data-copy="senha-gerada">
+      <%- include('../../partials/icon', { iconName: 'copy', iconClass: 'button-icon' }) %>
+      <span data-copy-label>Copiar senha</span>
+    </button>
+    <a class="button button-primary" href="/admin/usuarios">Voltar para usuários</a>
+  </div>
+</dialog>
