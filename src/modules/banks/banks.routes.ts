@@ -2,14 +2,22 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import multer from 'multer';
+import { z } from 'zod';
 import type { AppDeps } from '../../app.js';
 import type { Env } from '../../config/env.js';
-import { idListField, isUuid } from '../../http/forms.js';
+import { idListField, isUuid, singleLine } from '../../http/forms.js';
 import { flash, renderNotFound, userOnly } from '../../http/session.js';
 import { buildGptFixMessage } from '../../markdown/gpt-fix-message.js';
 import { parseQuestions } from '../../markdown/parse-questions.js';
 import { MAX_TIME_LIMIT_MINUTES } from '../attempts/attempts.routes.js';
 import { listAttemptsForBank, settleExpiredAttempts } from '../attempts/attempts.service.js';
+import {
+  findBankFolder,
+  listFolders,
+  moveBanksToFolder,
+  removeBanksFromFolders,
+  type FolderSummary,
+} from '../folders/folders.service.js';
 import { listGroupsOfUser, type GroupSummary } from '../groups/groups.service.js';
 import {
   deleteBank,
@@ -17,7 +25,9 @@ import {
   findOwnerName,
   importBank,
   listSharedGroups,
+  renameBank,
   setBankGroups,
+  type BankAccess,
 } from './banks.service.js';
 
 const MODELS_DIR = path.join(import.meta.dirname, '../../../modelos');
@@ -27,6 +37,19 @@ const promptText = readFileSync(path.join(MODELS_DIR, PROMPT_FILE), 'utf8');
 
 const ORIGINAL_NAME_MAX_LENGTH = 255;
 const TITLE_MAX_LENGTH = 200;
+
+const titleSchema = z
+  .string({ error: 'Informe o nome do simulado.' })
+  .transform((value) => singleLine(value.replace(/\p{Cc}/gu, ' ')))
+  .pipe(
+    z
+      .string()
+      .min(1, 'Informe o nome do simulado.')
+      .max(TITLE_MAX_LENGTH, `O nome pode ter no máximo ${TITLE_MAX_LENGTH} caracteres.`),
+  );
+
+/** Os simulados de Meus simulados (os próprios e os recebidos) podem ir para uma pasta. */
+const canFile = (access: BankAccess) => access.isOwner || access.viaGroups.length === 0;
 
 /**
  * Lê o upload antes da checagem de CSRF (o token vem no próprio formulário multipart). Só roda
@@ -91,6 +114,7 @@ interface IssueView {
 
 interface ImportView {
   selectedGroups?: string[];
+  selectedFolder?: string;
   fileError?: string | null;
   issues?: IssueView[];
   gptMessage?: string | null;
@@ -103,15 +127,17 @@ export function bankRoutes({ db, crypto, env, fileStore }: AppDeps): Router {
   const renderImport = (
     res: Response,
     status: number,
-    myGroups: GroupSummary[],
+    mine: { groups: GroupSummary[]; folders: FolderSummary[] },
     view: ImportView,
   ) =>
     res.status(status).render('bancos/importar', {
       title: 'Importar simulado',
-      myGroups,
+      myGroups: mine.groups,
+      myFolders: mine.folders,
       promptText,
       maxUploadLabel,
       selectedGroups: view.selectedGroups ?? [],
+      selectedFolder: view.selectedFolder ?? '',
       fileError: view.fileError ?? null,
       issues: view.issues ?? [],
       gptMessage: view.gptMessage ?? null,
@@ -125,16 +151,23 @@ export function bankRoutes({ db, crypto, env, fileStore }: AppDeps): Router {
     res.sendFile(path.join(MODELS_DIR, file));
   });
 
+  const groupsAndFolders = async (userId: string) => ({
+    groups: await listGroupsOfUser(db, crypto, userId),
+    folders: await listFolders(db, crypto, userId),
+  });
+
   router.get('/bancos/importar', ...userOnly, async (req, res) => {
-    renderImport(res, 200, await listGroupsOfUser(db, crypto, req.currentUser!.id), {});
+    renderImport(res, 200, await groupsAndFolders(req.currentUser!.id), {});
   });
 
   router.post('/bancos', ...userOnly, async (req, res) => {
     const user = req.currentUser!;
-    const myGroups = await listGroupsOfUser(db, crypto, user.id);
+    const mine = await groupsAndFolders(user.id);
     const selectedGroups = idListField(req, 'grupos');
+    const folderField: unknown = req.body?.pasta;
+    const selectedFolder = isUuid(folderField) ? folderField : '';
     const fail = (status: number, view: ImportView) =>
-      renderImport(res, status, myGroups, { selectedGroups, ...view });
+      renderImport(res, status, mine, { selectedGroups, selectedFolder, ...view });
 
     const uploadError: unknown = res.locals.uploadError;
     if (uploadError === 'LIMIT_FILE_SIZE') {
@@ -154,9 +187,12 @@ export function bankRoutes({ db, crypto, env, fileStore }: AppDeps): Router {
           'O arquivo não está em UTF-8. Salve-o de novo com a codificação UTF-8 e tente outra vez.',
       });
     }
-    const myGroupIds = new Set(myGroups.map((group) => group.id));
+    const myGroupIds = new Set(mine.groups.map((group) => group.id));
     if (!selectedGroups.every((id) => myGroupIds.has(id))) {
       return fail(422, { fileError: 'Você só pode compartilhar com os grupos de que participa.' });
+    }
+    if (selectedFolder && !mine.folders.some((folder) => folder.id === selectedFolder)) {
+      return fail(422, { fileError: 'Escolha uma das suas pastas.', selectedFolder: '' });
     }
 
     const parsed = parseQuestions(text);
@@ -174,6 +210,7 @@ export function bankRoutes({ db, crypto, env, fileStore }: AppDeps): Router {
       content: req.file.buffer,
       questions: parsed.questions,
       groupIds: selectedGroups,
+      folderId: selectedFolder || null,
     });
     req.session.importResult = {
       bankId,
@@ -198,6 +235,7 @@ export function bankRoutes({ db, crypto, env, fileStore }: AppDeps): Router {
     const importResult = req.session.importResult;
     if (importResult) delete req.session.importResult;
     await settleExpiredAttempts(db, crypto, userId);
+    const filing = canFile(access);
 
     res.render('bancos/banco', {
       title: crypto.decryptField(bank.titleEnc, 'question_banks', 'title', bank.id),
@@ -207,6 +245,10 @@ export function bankRoutes({ db, crypto, env, fileStore }: AppDeps): Router {
       ownerName: isOwner ? null : await findOwnerName(db, crypto, bank.userId),
       sharedGroups: isOwner ? await listSharedGroups(db, crypto, bank.id) : [],
       myGroups: isOwner ? await listGroupsOfUser(db, crypto, userId) : [],
+      canFile: filing,
+      folder: filing ? await findBankFolder(db, crypto, userId, bank.id) : null,
+      myFolders: filing ? await listFolders(db, crypto, userId) : [],
+      titleMaxLength: TITLE_MAX_LENGTH,
       importResult: importResult?.bankId === bank.id ? importResult : null,
       attempts: await listAttemptsForBank(db, userId, bank.id),
       maxMinutes: MAX_TIME_LIMIT_MINUTES,
@@ -234,6 +276,42 @@ export function bankRoutes({ db, crypto, env, fileStore }: AppDeps): Router {
         : 'Compartilhamento atualizado: o simulado agora é privado.',
     );
     res.redirect(`/bancos/${access.bank.id}`);
+  });
+
+  router.post('/bancos/:id/nome', ...userOnly, async (req, res) => {
+    const access = await accessFromParams(req);
+    if (!access?.isOwner) return renderNotFound(req, res);
+    const parsed = titleSchema.safeParse(req.body?.nome);
+    if (!parsed.success) {
+      flash(req, 'error', parsed.error.issues[0]!.message);
+    } else {
+      await renameBank(db, crypto, access.bank.id, parsed.data);
+      flash(req, 'success', 'Nome do simulado atualizado.');
+    }
+    res.redirect(`/bancos/${access.bank.id}`);
+  });
+
+  /** Guarda numa pasta do usuário ou, com "Sem pasta" (valor vazio), tira da pasta. */
+  router.post('/bancos/:id/pasta', ...userOnly, async (req, res) => {
+    const access = await accessFromParams(req);
+    if (!access || !canFile(access)) return renderNotFound(req, res);
+    const userId = req.currentUser!.id;
+    const bankId = access.bank.id;
+    const folderId: unknown = req.body?.pasta;
+
+    if (!folderId) {
+      await removeBanksFromFolders(db, userId, [bankId]);
+      flash(req, 'success', 'Simulado tirado da pasta.');
+      return res.redirect(`/bancos/${bankId}`);
+    }
+    const folder = (await listFolders(db, crypto, userId)).find((item) => item.id === folderId);
+    if (!folder) {
+      flash(req, 'error', 'Escolha uma das suas pastas.');
+      return res.redirect(`/bancos/${bankId}`);
+    }
+    await moveBanksToFolder(db, userId, folder.id, [bankId]);
+    flash(req, 'success', `Simulado guardado na pasta ${folder.name}.`);
+    res.redirect(`/bancos/${bankId}`);
   });
 
   router.post('/bancos/:id/excluir', ...userOnly, async (req, res) => {

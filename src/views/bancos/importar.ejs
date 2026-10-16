@@ -63,6 +63,19 @@
           <% } %>
         </fieldset>
 
+        <% if (myFolders.length) { %>
+          <div class="field">
+            <label for="pasta">Pasta</label>
+            <select id="pasta" name="pasta" aria-describedby="pasta-dica">
+              <option value="">Sem pasta</option>
+              <% myFolders.forEach(function (folder) { %>
+                <option value="<%= folder.id %>"<% if (selectedFolder === folder.id) { %> selected<% } %>><%= folder.name %></option>
+              <% }) %>
+            </select>
+            <small class="hint" id="pasta-dica">Só você vê as suas pastas.</small>
+          </div>
+        <% } %>
+
         <div class="actions">
           <button type="submit" class="button button-primary">Importar</button>
         </div>

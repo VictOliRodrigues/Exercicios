@@ -105,7 +105,7 @@
                   <div class="row-actions-inline">
                     <a class="button button-small button-ghost" href="/admin/usuarios/<%= user.id %>">Editar</a>
                     <a class="button button-small <%= user.resetRequestedAt ? 'button-primary' : 'button-secondary' %>" href="/admin/usuarios/<%= user.id %>/redefinir-senha">Redefinir senha</a>
-                    <form method="post" action="/admin/usuarios/<%= user.id %>/ativo" class="inline-form"<% if (user.active) { %> data-confirm="Desativar o acesso de <%= user.name %>? As sessões abertas serão encerradas. Os dados e o histórico ficam guardados."<% } %>>
+                    <form method="post" action="/admin/usuarios/<%= user.id %>/ativo" class="inline-form"<% if (user.active) { %> data-confirm-title="Desativar o acesso de <%= user.name %>?" data-confirm="As sessões abertas serão encerradas. Os dados e o histórico ficam guardados." data-confirm-button="Desativar"<% } %>>
                       <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
                       <input type="hidden" name="ativo" value="<%= user.active ? 'false' : 'true' %>">
                       <button type="submit" class="button button-small <%= user.active ? 'button-ghost button-ghost-danger' : 'button-secondary' %>"><%= user.active ? 'Desativar' : 'Reativar' %></button>

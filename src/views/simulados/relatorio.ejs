@@ -114,7 +114,7 @@
         <h3>Excluir relatório</h3>
         <p>A nota e as respostas desta tentativa são apagadas e saem do histórico. Os simulados continuam como estão. Esta ação não pode ser desfeita.</p>
       </div>
-      <form method="post" action="/simulados/<%= attempt.id %>/excluir" class="inline-form" data-confirm="Excluir este relatório? A nota e as respostas desta tentativa serão apagadas. Esta ação não pode ser desfeita.">
+      <form method="post" action="/simulados/<%= attempt.id %>/excluir" class="inline-form" data-confirm-title="Excluir este relatório?" data-confirm="A nota e as respostas desta tentativa serão apagadas. Esta ação não pode ser desfeita." data-confirm-button="Excluir relatório">
         <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
         <button type="submit" class="button button-danger">Excluir relatório</button>
       </form>

@@ -35,7 +35,7 @@
               </div>
               <div class="row-list-meta"><%= member.email %></div>
             </div>
-            <form method="post" action="/admin/grupos/<%= group.id %>/membros/<%= member.id %>/remover" class="inline-form" data-confirm="Remover <%= member.name %> do grupo? Os simulados que essa pessoa compartilhou aqui saem do grupo, e ela perde o acesso aos simulados do grupo que nunca fez.">
+            <form method="post" action="/admin/grupos/<%= group.id %>/membros/<%= member.id %>/remover" class="inline-form" data-confirm-title="Remover <%= member.name %> do grupo?" data-confirm="Os simulados que essa pessoa compartilhou aqui saem do grupo, e ela perde o acesso aos simulados do grupo que nunca fez." data-confirm-button="Remover do grupo">
               <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
               <button type="submit" class="button button-small button-danger-outline">Remover</button>
             </form>
@@ -83,7 +83,7 @@
         <h3>Excluir grupo</h3>
         <p>O grupo é apagado e os membros perdem o acesso aos simulados que estavam compartilhados com ele, menos os que já fizeram. Os usuários e os simulados não são apagados, e os resultados ficam guardados. Esta ação não pode ser desfeita.</p>
       </div>
-      <form method="post" action="/admin/grupos/<%= group.id %>/excluir" class="inline-form" data-confirm="Excluir o grupo <%= group.name %>? Esta ação não pode ser desfeita.">
+      <form method="post" action="/admin/grupos/<%= group.id %>/excluir" class="inline-form" data-confirm-title="Excluir o grupo <%= group.name %>?" data-confirm="Os membros perdem o acesso aos simulados compartilhados com ele, menos os que já fizeram. Esta ação não pode ser desfeita." data-confirm-button="Excluir grupo">
         <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
         <button type="submit" class="button button-danger">Excluir grupo</button>
       </form>

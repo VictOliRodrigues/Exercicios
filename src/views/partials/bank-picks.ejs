@@ -1,0 +1,19 @@
+<%# Simulados para marcar e guardar numa pasta: a linha inteira marca a caixa. %>
+<ul class="list-card-rows pick-list">
+  <% choices.forEach(function (bank) { %>
+    <%
+      const notes = [plural(bank.questionCount, 'questão', 'questões')];
+      if (bank.ownerName) notes.push('Recebido de ' + bank.ownerName);
+      if (bank.folderName) notes.push('Na pasta ' + bank.folderName);
+    %>
+    <li>
+      <label class="pick">
+        <input type="checkbox" name="bancos" value="<%= bank.id %>"<% if (selected.includes(bank.id)) { %> checked<% } %>>
+        <span class="list-card-main">
+          <span class="pick-title"><%= bank.title %></span>
+          <span class="list-card-meta"><%= notes.join(' · ') %></span>
+        </span>
+      </label>
+    </li>
+  <% }) %>
+</ul>

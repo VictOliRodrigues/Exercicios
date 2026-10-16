@@ -99,6 +99,42 @@ export const questionBankGroups = mysqlTable(
   ],
 );
 
+/** Pastas de cada usuário para organizar Meus simulados. Só o dono da pasta a vê. */
+export const folders = mysqlTable(
+  'folders',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    nameEnc: text('name_enc').notNull(),
+    createdAt: datetime('created_at').notNull(),
+    updatedAt: datetime('updated_at').notNull(),
+  },
+  (table) => [index('folders_user_idx').on(table.userId)],
+);
+
+/** Em que pasta o usuário guardou cada simulado: no máximo uma por simulado. */
+export const folderBanks = mysqlTable(
+  'folder_banks',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    bankId: uuid('bank_id')
+      .notNull()
+      .references(() => questionBanks.id),
+    folderId: uuid('folder_id')
+      .notNull()
+      .references(() => folders.id, { onDelete: 'cascade' }),
+    addedAt: datetime('added_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.bankId] }),
+    index('folder_banks_folder_idx').on(table.folderId),
+  ],
+);
+
 export const questions = mysqlTable(
   'questions',
   {

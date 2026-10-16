@@ -375,3 +375,48 @@ describe('compartilhamento', () => {
     expect((await ana.agent.get('/bancos/0192f0c1-0000-7000-8000-000000000000')).status).toBe(404);
   });
 });
+
+describe('renomear', () => {
+  it('o dono renomeia: o nome novo aparece para quem recebeu, inclusive nas tentativas', async () => {
+    const ana = await loggedUser('Ana Souza', 'ana@exemplo.com');
+    const bruno = await loggedUser('Bruno Lima', 'bruno@exemplo.com');
+    const group = await addGroup('Turma', [ana.id, bruno.id]);
+    const bankId = await importBank(ana.agent, simpleBank('Nome antigo'), { groups: [group] });
+    await addAttempt(bruno.id, bankId);
+
+    const res = await postForm(ana.agent, `/bancos/${bankId}`, `/bancos/${bankId}/nome`, {
+      nome: '  Direito \t Penal  ',
+    });
+    expect(res.headers.location).toBe(`/bancos/${bankId}`);
+    const page = (await ana.agent.get(`/bancos/${bankId}`)).text;
+    expect(page).toContain('Nome do simulado atualizado.');
+    expect(page).toContain('<h1 class="title-lg">Direito Penal</h1>');
+
+    const brunoPanel = (await bruno.agent.get('/')).text;
+    expect(brunoPanel).toContain('Direito Penal');
+    expect(brunoPanel).not.toContain('Nome antigo');
+
+    const [rows] = await ctx.pool.query('SELECT title_enc FROM question_banks');
+    expect(JSON.stringify(rows)).not.toContain('Direito');
+  });
+
+  it('só o dono renomeia; nome vazio é recusado', async () => {
+    const ana = await loggedUser('Ana Souza', 'ana@exemplo.com');
+    const bruno = await loggedUser('Bruno Lima', 'bruno@exemplo.com');
+    const group = await addGroup('Turma', [ana.id, bruno.id]);
+    const bankId = await importBank(ana.agent, simpleBank('Direito Penal'), { groups: [group] });
+
+    expect((await bruno.agent.get(`/bancos/${bankId}`)).text).not.toContain(
+      `/bancos/${bankId}/nome`,
+    );
+    const other = await postForm(bruno.agent, `/bancos/${bankId}`, `/bancos/${bankId}/nome`, {
+      nome: 'Outro nome',
+    });
+    expect(other.status).toBe(404);
+
+    await postForm(ana.agent, `/bancos/${bankId}`, `/bancos/${bankId}/nome`, { nome: '   ' });
+    const page = (await ana.agent.get(`/bancos/${bankId}`)).text;
+    expect(page).toContain('Informe o nome do simulado.');
+    expect(page).toContain('<h1 class="title-lg">Direito Penal</h1>');
+  });
+});
