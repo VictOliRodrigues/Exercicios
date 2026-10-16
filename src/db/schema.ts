@@ -119,9 +119,8 @@ export const attempts = mysqlTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id),
-    bankId: uuid('bank_id')
-      .notNull()
-      .references(() => questionBanks.id),
+    /** Simulado da tentativa. Vazio quando ela junta vários: a lista fica em attempt_banks. */
+    bankId: uuid('bank_id').references(() => questionBanks.id),
     status: mysqlEnum('status', ['in_progress', 'finished']).notNull(),
     totalQuestions: int('total_questions').notNull(),
     timeLimitSeconds: int('time_limit_seconds'),
@@ -138,6 +137,24 @@ export const attempts = mysqlTable(
   (table) => [
     index('attempts_user_status_idx').on(table.userId, table.status),
     index('attempts_user_bank_idx').on(table.userId, table.bankId),
+  ],
+);
+
+/** Simulados de cada tentativa (um ou vários), na ordem em que foram escolhidos. */
+export const attemptBanks = mysqlTable(
+  'attempt_banks',
+  {
+    attemptId: uuid('attempt_id')
+      .notNull()
+      .references(() => attempts.id, { onDelete: 'cascade' }),
+    bankId: uuid('bank_id')
+      .notNull()
+      .references(() => questionBanks.id),
+    position: int('position').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.attemptId, table.bankId] }),
+    index('attempt_banks_bank_idx').on(table.bankId),
   ],
 );
 

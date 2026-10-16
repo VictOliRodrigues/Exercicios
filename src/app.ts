@@ -11,6 +11,7 @@ import type { Database } from './db/client.js';
 import { CSRF_ERROR_CODE, csrfSynchronisedProtection, generateToken } from './http/csrf.js';
 import { viewHelpers } from './http/format.js';
 import { exposeFlash, loadCurrentUser, renderNotFound, SESSION_COOKIE } from './http/session.js';
+import { exposeTheme } from './http/theme.js';
 import './http/types.js';
 import { adminGroupsRoutes } from './modules/admin-groups/admin-groups.routes.js';
 import { adminUsersRoutes } from './modules/admin-users/admin-users.routes.js';
@@ -75,6 +76,7 @@ export function createApp(deps: AppDeps) {
     res.set('Cache-Control', 'no-store');
     next();
   });
+  app.use(exposeTheme);
   app.use(express.urlencoded({ extended: false, limit: '50kb' }));
   app.use(express.json({ limit: '50kb' }));
   app.use(

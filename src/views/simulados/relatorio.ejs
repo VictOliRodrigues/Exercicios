@@ -1,10 +1,13 @@
 <%- include('../partials/head', { pageWidth: 920 }) %>
 <%
   const byTime = attempt.finishReason === 'time';
+  // Prova com vários simulados: cada questão mostra de qual deles veio.
+  const multiple = banks.length > 1;
+  const bankTitles = Object.fromEntries(banks.map(function (bank) { return [bank.id, bank.title]; }));
   const wrongOnly = attempt.wrongCount - attempt.blankCount;
 %>
 <nav class="breadcrumb" aria-label="Você está em">
-  <a href="/">Painel</a><span class="breadcrumb-separator" aria-hidden="true">›</span><% if (canOpenBank) { %><a href="/bancos/<%= attempt.bankId %>"><%= bankTitle %></a><% } else { %><span><%= bankTitle %></span><% } %><span class="breadcrumb-separator" aria-hidden="true">›</span><span aria-current="page">Relatório</span>
+  <a href="/">Painel</a><span class="breadcrumb-separator" aria-hidden="true">›</span><% if (!multiple) { %><% if (canOpenBank) { %><a href="/bancos/<%= attempt.bankId %>"><%= bankTitle %></a><% } else { %><span><%= bankTitle %></span><% } %><span class="breadcrumb-separator" aria-hidden="true">›</span><% } %><span aria-current="page">Relatório</span>
 </nav>
 <div class="page-header">
   <div>
@@ -18,6 +21,9 @@
         <span class="badge badge-muted">Finalizado por você</span>
       <% } %>
     </div>
+    <% if (multiple) { %>
+      <p class="page-lead">Com as questões de <%= formatList(banks.map(function (bank) { return bank.title; })) %>.</p>
+    <% } %>
   </div>
 </div>
 
@@ -78,7 +84,7 @@
       <ol class="review-list">
         <% items.forEach(function (item) { %>
           <li class="review-item" id="questao-<%= item.number %>">
-            <h3 class="question-number">Questão <%= item.number %></h3>
+            <h3 class="question-number">Questão <%= item.number %><% if (multiple) { %> <span class="question-bank">· <%= bankTitles[item.bankId] %></span><% } %></h3>
             <div class="rich-text question-statement"><%- item.statementHtml %></div>
             <% if (item.selected) { %>
               <div class="answer answer-wrong">
@@ -99,6 +105,20 @@
         <% }) %>
       </ol>
     <% } %>
+  </section>
+
+  <section class="card danger-card" aria-labelledby="area-de-perigo">
+    <h2 class="danger-card-head" id="area-de-perigo">Área de perigo</h2>
+    <div class="danger-card-body">
+      <div class="danger-card-text">
+        <h3>Excluir relatório</h3>
+        <p>A nota e as respostas desta tentativa são apagadas e saem do histórico. Os simulados continuam como estão. Esta ação não pode ser desfeita.</p>
+      </div>
+      <form method="post" action="/simulados/<%= attempt.id %>/excluir" class="inline-form" data-confirm="Excluir este relatório? A nota e as respostas desta tentativa serão apagadas. Esta ação não pode ser desfeita.">
+        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+        <button type="submit" class="button button-danger">Excluir relatório</button>
+      </form>
+    </div>
   </section>
 </div>
 <%- include('../partials/foot') %>

@@ -1,15 +1,20 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import type { AppDeps } from '../../app.js';
+import { formatList } from '../../http/format.js';
 import { isUuid } from '../../http/forms.js';
 import { flash, renderNotFound, userOnly } from '../../http/session.js';
-import { findBankAccess, findBankTitle } from '../banks/banks.service.js';
+import { findBankAccess, loadPanel } from '../banks/banks.service.js';
+import { listGroupsOfUser } from '../groups/groups.service.js';
 import { elapsedSeconds, letterLabel, OPTION_COUNT } from './attempt-logic.js';
 import {
+  attemptTitle,
+  deleteReport,
   discardAttempt,
   findOwnAttempt,
   finishAttempt,
   lastPage,
+  listAttemptBanks,
   listBlankNumbers,
   loadExamPage,
   loadReportItems,
@@ -61,6 +66,29 @@ function startOptionsFrom(body: Record<string, unknown> = {}) {
   };
 }
 
+/** A caixa "Embaralhar" só vem no formulário quando está marcada. */
+const shuffledFrom = (body: Record<string, unknown> = {}) => body.embaralhar === '1';
+
+/** O que a pessoa preencheu nas opções, para mostrar de novo junto com o erro. */
+function startValuesFrom(body: Record<string, unknown> = {}) {
+  const text = (value: unknown) => (typeof value === 'string' ? value : undefined);
+  return {
+    modoQuantidade: text(body.modoQuantidade),
+    quantidade: text(body.quantidade),
+    modoTempo: text(body.modoTempo),
+    minutos: text(body.minutos),
+    embaralhar: shuffledFrom(body),
+  };
+}
+
+/** Um simulado que dá para juntar com outros. */
+interface BankChoice {
+  id: string;
+  title: string;
+  questionCount: number;
+  origin: string;
+}
+
 const positiveInt = (value: unknown) => {
   const number = typeof value === 'string' && /^\d{1,6}$/.test(value) ? Number(value) : NaN;
   return number >= 1 ? number : null;
@@ -103,6 +131,10 @@ export function attemptRoutes({ db, crypto }: AppDeps): Router {
     };
   };
 
+  /** Simulados da tentativa (um, ou vários quando ela junta mais de um). */
+  const banksOf = async (attempt: AttemptRow) =>
+    (await listAttemptBanks(db, crypto, [attempt.id])).get(attempt.id) ?? [];
+
   async function renderExam(
     res: Response,
     attempt: AttemptRow,
@@ -110,7 +142,7 @@ export function attemptRoutes({ db, crypto }: AppDeps): Router {
     blankModal: { blanks: number[] } | null = null,
   ) {
     res.render('simulados/prova', {
-      title: await findBankTitle(db, crypto, attempt.bankId),
+      title: attemptTitle(await banksOf(attempt)),
       attempt: { id: attempt.id, bankId: attempt.bankId },
       exam: await loadExamPage(db, crypto, attempt.id, page),
       clock: clockOf(attempt),
@@ -134,9 +166,85 @@ export function attemptRoutes({ db, crypto }: AppDeps): Router {
     }
     const attemptId = await startAttempt(db, {
       userId: req.currentUser!.id,
-      bankId: access.bank.id,
+      bankIds: [access.bank.id],
       count: parsed.data.quantidade,
       timeLimitSeconds: parsed.data.minutos ? parsed.data.minutos * 60 : null,
+      shuffled: shuffledFrom(req.body),
+    });
+    res.redirect(`/simulados/${attemptId}`);
+  });
+
+  /** Simulados que dá para juntar: os próprios, os recebidos e os dos grupos, sem repetir. */
+  async function loadChoices(userId: string): Promise<BankChoice[]> {
+    const panel = await loadPanel(db, crypto, userId, await listGroupsOfUser(db, crypto, userId));
+    const choices = new Map<string, BankChoice & { groups: string[] }>();
+    const add = (bank: (typeof panel.mine)[number], origin: string, group?: string) => {
+      const existing = choices.get(bank.id);
+      if (existing) {
+        if (group) existing.groups.push(group);
+        return;
+      }
+      const { id, title, questionCount } = bank;
+      choices.set(id, { id, title, questionCount, origin, groups: group ? [group] : [] });
+    };
+    for (const bank of panel.mine) add(bank, 'Seu');
+    for (const bank of panel.received) add(bank, `Recebido de ${bank.ownerName}`);
+    for (const group of panel.groups) {
+      for (const bank of group.banks) add(bank, `Enviado por ${bank.ownerName}`, group.name);
+    }
+    return [...choices.values()].map(({ groups, ...choice }) => ({
+      ...choice,
+      origin: groups.length ? `${choice.origin} em ${formatList(groups)}` : choice.origin,
+    }));
+  }
+
+  async function renderMultiple(
+    req: Request,
+    res: Response,
+    form: { errors?: string[]; selected?: string[]; values?: ReturnType<typeof startValuesFrom> },
+  ) {
+    const choices = await loadChoices(req.currentUser!.id);
+    res.status(form.errors?.length ? 422 : 200).render('simulados/multiplos', {
+      title: 'Múltiplos simulados',
+      choices,
+      totalQuestions: choices.reduce((sum, choice) => sum + choice.questionCount, 0),
+      errors: form.errors ?? [],
+      selected: form.selected ?? [],
+      values: form.values ?? {},
+      maxMinutes: MAX_TIME_LIMIT_MINUTES,
+    });
+  }
+
+  router.get('/simulados/multiplos', ...userOnly, (req, res) => renderMultiple(req, res, {}));
+
+  router.post('/simulados/multiplos', ...userOnly, async (req, res) => {
+    const marked = new Set([req.body?.bancos].flat().filter((id) => isUuid(id)));
+    const choices = await loadChoices(req.currentUser!.id);
+    const chosen = choices.filter((choice) => marked.has(choice.id));
+    const form = { selected: chosen.map((choice) => choice.id), values: startValuesFrom(req.body) };
+
+    if (chosen.length < marked.size) {
+      return renderMultiple(req, res, {
+        ...form,
+        errors: [
+          'Algum simulado marcado não está mais disponível. Confira a lista e tente de novo.',
+        ],
+      });
+    }
+    if (!chosen.length) {
+      return renderMultiple(req, res, { ...form, errors: ['Marque pelo menos um simulado.'] });
+    }
+    const total = chosen.reduce((sum, choice) => sum + choice.questionCount, 0);
+    const parsed = startOptionsSchema(total).safeParse(startOptionsFrom(req.body));
+    if (!parsed.success) {
+      return renderMultiple(req, res, { ...form, errors: [parsed.error.issues[0]!.message] });
+    }
+    const attemptId = await startAttempt(db, {
+      userId: req.currentUser!.id,
+      bankIds: form.selected,
+      count: parsed.data.quantidade,
+      timeLimitSeconds: parsed.data.minutos ? parsed.data.minutos * 60 : null,
+      shuffled: form.values.embaralhar,
     });
     res.redirect(`/simulados/${attemptId}`);
   });
@@ -225,19 +333,40 @@ export function attemptRoutes({ db, crypto }: AppDeps): Router {
     res.redirect(examPath(attempt, firstBlankPage ?? (await lastPage(db, attempt.id))));
   });
 
+  /**
+   * Depois de descartar ou excluir, volta para a página do simulado. Sem nenhuma tentativa, quem
+   * recebeu o simulado por um grupo que já acabou perde o acesso; aí (e na tentativa com vários
+   * simulados) volta para o painel.
+   */
+  async function pathAfterRemoving(attempt: AttemptRow) {
+    const access =
+      attempt.bankId && (await findBankAccess(db, crypto, attempt.userId, attempt.bankId));
+    return access ? `/bancos/${attempt.bankId}` : '/';
+  }
+
   router.post('/simulados/:id/descartar', ...userOnly, async (req, res) => {
     const attempt = await attemptFromParams(req);
     if (!attempt) return renderNotFound(req, res);
-    const user = req.currentUser!;
 
     if ((await settleIfExpired(db, crypto, attempt)) || !(await discardAttempt(db, attempt.id))) {
       flash(req, 'error', 'Só dá para descartar uma tentativa em andamento.');
     } else {
       flash(req, 'success', 'Tentativa descartada.');
     }
-    // Sem nenhuma tentativa, quem recebeu o simulado por um grupo que já acabou perde o acesso.
-    const access = await findBankAccess(db, crypto, user.id, attempt.bankId);
-    res.redirect(access ? `/bancos/${attempt.bankId}` : '/');
+    res.redirect(await pathAfterRemoving(attempt));
+  });
+
+  router.post('/simulados/:id/excluir', ...userOnly, async (req, res) => {
+    const attempt = await attemptFromParams(req);
+    if (!attempt) return renderNotFound(req, res);
+
+    await settleIfExpired(db, crypto, attempt);
+    if (await deleteReport(db, attempt.id)) {
+      flash(req, 'success', 'Relatório excluído.');
+    } else {
+      flash(req, 'error', 'Só dá para excluir o relatório de uma tentativa finalizada.');
+    }
+    res.redirect(req.body?.voltar === 'painel' ? '/' : await pathAfterRemoving(attempt));
   });
 
   router.get('/simulados/:id/relatorio', ...userOnly, async (req, res) => {
@@ -246,12 +375,16 @@ export function attemptRoutes({ db, crypto }: AppDeps): Router {
     if (!(await settleIfExpired(db, crypto, attempt))) return res.redirect(examPath(attempt));
     if (attempt.status !== 'finished') attempt = (await attemptFromParams(req))!;
 
-    const bankTitle = await findBankTitle(db, crypto, attempt.bankId);
+    const banks = await banksOf(attempt);
+    const bankTitle = attemptTitle(banks);
     // Quem perdeu o acesso (o dono que excluiu o simulado) continua vendo os próprios relatórios.
-    const canOpenBank = Boolean(await findBankAccess(db, crypto, attempt.userId, attempt.bankId));
+    const canOpenBank = Boolean(
+      attempt.bankId && (await findBankAccess(db, crypto, attempt.userId, attempt.bankId)),
+    );
     res.render('simulados/relatorio', {
       title: `Relatório: ${bankTitle}`,
       bankTitle,
+      banks,
       canOpenBank,
       attempt,
       items: await loadReportItems(db, crypto, attempt.id),

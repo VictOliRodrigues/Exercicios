@@ -4,6 +4,7 @@ import type { CryptoService } from '../../crypto/index.js';
 import type { FileStore } from '../../crypto/file-store.js';
 import type { Database } from '../../db/client.js';
 import {
+  attemptBanks,
   attempts,
   questionBankGroups,
   questionBanks,
@@ -158,10 +159,12 @@ export async function findBankAccess(
         id: row.id,
         name: decryptGroupName(crypto, row),
       }));
+  // Vale também a tentativa que juntou este simulado com outros.
   const [attempt] = await db
-    .select({ id: attempts.id })
-    .from(attempts)
-    .where(and(eq(attempts.userId, userId), eq(attempts.bankId, bankId)))
+    .select({ id: attemptBanks.attemptId })
+    .from(attemptBanks)
+    .innerJoin(attempts, eq(attempts.id, attemptBanks.attemptId))
+    .where(and(eq(attempts.userId, userId), eq(attemptBanks.bankId, bankId)))
     .limit(1);
   if (viaGroups.length === 0 && !attempt) return null;
   return { bank, isOwner: false, viaGroups, hasAttempts: Boolean(attempt) };
@@ -317,7 +320,8 @@ export async function loadPanel(
   const receivedRows = await db
     .selectDistinct({ bank: questionBanks, ownerId: users.id, ownerNameEnc: users.nameEnc })
     .from(attempts)
-    .innerJoin(questionBanks, eq(questionBanks.id, attempts.bankId))
+    .innerJoin(attemptBanks, eq(attemptBanks.attemptId, attempts.id))
+    .innerJoin(questionBanks, eq(questionBanks.id, attemptBanks.bankId))
     .innerJoin(users, eq(users.id, questionBanks.userId))
     .where(
       and(

@@ -1,7 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm';
 import type { Agent } from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { attemptQuestions, attempts } from '../../src/db/schema.js';
+import { attemptQuestions, attempts, questions } from '../../src/db/schema.js';
 import { letterLabel } from '../../src/modules/attempts/attempt-logic.js';
 import { fixtures, simpleBank } from '../helpers/fixtures.js';
 import { buildTestApp, csrfFrom, resetTables } from '../helpers/test-app.js';
@@ -195,6 +195,22 @@ describe('iniciar simulado', () => {
     }
     const [rows] = await ctx.pool.query('SELECT COUNT(*) AS total FROM attempts');
     expect((rows as { total: number }[])[0]!.total).toBe(0);
+  });
+
+  it('sem "Embaralhar", as questões e as alternativas ficam na ordem do arquivo', async () => {
+    const { agent: ana } = await loggedUser('Ana Souza', 'ana@exemplo.com');
+    const bankId = await importBank(ana, simpleBank('Em ordem', 12));
+    expect((await ana.get(`/bancos/${bankId}`)).text).toMatch(
+      /name="embaralhar" value="1"[^>]*checked/,
+    );
+    const attemptId = await startAttempt(ana, bankId, { embaralhar: false });
+
+    expect((await placement(attemptId)).every((row) => row.optionOrder.join() === '0,1,2,3')).toBe(
+      true,
+    );
+    const page = (await ana.get(`/simulados/${attemptId}`)).text;
+    const statements = [...page.matchAll(/Pergunta (\d+)\?/g)].map((match) => Number(match[1]));
+    expect(statements).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 
   it('quem não tem acesso ao simulado recebe 404 ao iniciar', async () => {
@@ -679,5 +695,165 @@ describe('quem já fez fica com o simulado', () => {
         .from(attempts)
         .where(and(eq(attempts.bankId, bankId), eq(attempts.status, 'in_progress'))),
     ).toHaveLength(0);
+  });
+});
+
+describe('múltiplos simulados', () => {
+  /** A Ana tem um simulado próprio e recebe um da Bia pelo grupo. */
+  async function setup() {
+    const ana = await loggedUser('Ana Souza', 'ana@exemplo.com');
+    const bia = await loggedUser('Bia Lima', 'bia@exemplo.com');
+    const groupId = await addGroup('Turma', [ana.id, bia.id]);
+    const own = await importBank(ana.agent, simpleBank('Português', 3));
+    const shared = await importBank(bia.agent, simpleBank('Matemática', 4), { groups: [groupId] });
+    return { ana, bia, own, shared };
+  }
+
+  const startMultiple = (user: Agent, body: Record<string, string | string[]>) =>
+    postForm(user, '/simulados/multiplos', '/simulados/multiplos', body);
+
+  const attemptIdFrom = (location: string | undefined) => {
+    const match = /^\/simulados\/([0-9a-f-]{36})$/.exec(location ?? '');
+    if (!match) throw new Error(`Início falhou: ${location}`);
+    return match[1]!;
+  };
+
+  it('o painel só mostra o botão com pelo menos dois simulados', async () => {
+    const { agent: ana } = await loggedUser('Ana Souza', 'ana@exemplo.com');
+    await importBank(ana, simpleBank('Um'));
+    expect((await ana.get('/')).text).not.toContain('href="/simulados/multiplos"');
+    await importBank(ana, simpleBank('Dois'));
+    expect((await ana.get('/')).text).toContain('href="/simulados/multiplos"');
+  });
+
+  it('junta os próprios e os dos grupos numa prova só', async () => {
+    const { ana, own, shared } = await setup();
+    const page = (await ana.agent.get('/simulados/multiplos')).text;
+    expect(page).toContain(`value="${own}"`);
+    expect(page).toContain(`value="${shared}"`);
+    expect(page).toContain('4 questões · Enviado por Bia Lima em Turma');
+
+    const res = await startMultiple(ana.agent, { bancos: [own, shared], embaralhar: '1' });
+    const attemptId = attemptIdFrom(res.headers.location);
+    expect(await attemptRow(attemptId)).toMatchObject({ bankId: null, totalQuestions: 7 });
+    expect((await ana.agent.get(`/simulados/${attemptId}`)).text).toContain('Múltiplos simulados');
+
+    const panel = (await ana.agent.get('/')).text;
+    expect(panel).toContain('Múltiplos simulados</a>');
+    expect(panel).toContain('Português e Matemática');
+    // Fica no painel, mas não em "Suas tentativas" de cada simulado.
+    expect((await ana.agent.get(`/bancos/${own}`)).text).not.toContain(attemptId);
+
+    // Marcando um só, é uma tentativa comum daquele simulado.
+    const single = attemptIdFrom(
+      (await startMultiple(ana.agent, { bancos: own })).headers.location,
+    );
+    expect(await attemptRow(single)).toMatchObject({ bankId: own, totalQuestions: 3 });
+  });
+
+  it('sem embaralhar, segue a ordem dos simulados; o relatório diz de onde veio cada questão', async () => {
+    const { ana, own, shared } = await setup();
+    // A ordem é a da lista (os próprios primeiro), não a de envio do formulário.
+    const res = await startMultiple(ana.agent, { bancos: [shared, own] });
+    const attemptId = attemptIdFrom(res.headers.location);
+
+    const order = await ctx.db
+      .select({ bankId: questions.bankId, position: questions.position })
+      .from(attemptQuestions)
+      .innerJoin(questions, eq(questions.id, attemptQuestions.questionId))
+      .where(eq(attemptQuestions.attemptId, attemptId))
+      .orderBy(asc(attemptQuestions.number));
+    expect(order.map((row) => row.bankId)).toEqual([own, own, own, shared, shared, shared, shared]);
+    for (const bankId of [own, shared]) {
+      const positions = order.filter((row) => row.bankId === bankId).map((row) => row.position);
+      expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    }
+    expect((await placement(attemptId)).every((row) => row.optionOrder.join() === '0,1,2,3')).toBe(
+      true,
+    );
+
+    await examPost(ana.agent, attemptId, 'finalizar', { confirmar: '1' });
+    const report = (await ana.agent.get(`/simulados/${attemptId}/relatorio`)).text;
+    expect(report).toContain('Com as questões de Português e Matemática.');
+    expect(report).toMatch(/id="questao-3"[\s\S]*?· Português<\/span>/);
+    expect(report).toMatch(/id="questao-4"[\s\S]*?· Matemática<\/span>/);
+  });
+
+  it('quem fez junto continua com o simulado do grupo depois que o compartilhamento acaba', async () => {
+    const { ana, bia, own, shared } = await setup();
+    await startMultiple(ana.agent, { bancos: [own, shared] });
+    await postForm(bia.agent, `/bancos/${shared}`, `/bancos/${shared}/compartilhamento`);
+    expect((await ana.agent.get(`/bancos/${shared}`)).status).toBe(200);
+  });
+
+  it('não inicia sem nada marcado, com simulado sem acesso ou com quantidade demais', async () => {
+    const { ana, own, shared } = await setup();
+    const { agent: caio } = await loggedUser('Caio Reis', 'caio@exemplo.com');
+    const other = await importBank(caio, simpleBank('Do Caio'));
+    const cases: [Record<string, string | string[]>, string][] = [
+      [{}, 'Marque pelo menos um simulado.'],
+      [{ bancos: [own, other] }, 'Algum simulado marcado não está mais disponível.'],
+      [
+        { bancos: [own, shared], modoQuantidade: 'sortear', quantidade: '8' },
+        'Informe uma quantidade de questões entre 1 e 7.',
+      ],
+    ];
+    for (const [body, message] of cases) {
+      const res = await startMultiple(ana.agent, body);
+      expect(res.status).toBe(422);
+      expect(res.text).toContain(message);
+      expect(res.text).not.toContain('Do Caio');
+    }
+    // O que estava marcado continua marcado.
+    const last = await startMultiple(ana.agent, cases[2]![0]);
+    expect(last.text).toContain(`value="${own}" checked`);
+    expect(last.text).toMatch(/value="sortear" id="modo-sortear" checked/);
+    const [rows] = await ctx.pool.query('SELECT COUNT(*) AS total FROM attempts');
+    expect((rows as { total: number }[])[0]!.total).toBe(0);
+  });
+});
+
+describe('excluir relatório', () => {
+  it('apaga a tentativa finalizada, com as respostas, e volta para onde estava', async () => {
+    const { agent: ana } = await loggedUser('Ana Souza', 'ana@exemplo.com');
+    const bankId = await importBank(ana, simpleBank('Para excluir', 3));
+    const attemptId = await startAttempt(ana, bankId);
+    await examPost(ana, attemptId, 'finalizar', { confirmar: '1' });
+    expect((await ana.get(`/simulados/${attemptId}/relatorio`)).text).toContain(
+      `action="/simulados/${attemptId}/excluir"`,
+    );
+
+    const res = await postForm(ana, `/bancos/${bankId}`, `/simulados/${attemptId}/excluir`);
+    expect(res.headers.location).toBe(`/bancos/${bankId}`);
+    expect((await ana.get(`/bancos/${bankId}`)).text).toContain('Relatório excluído.');
+    expect((await ana.get(`/simulados/${attemptId}/relatorio`)).status).toBe(404);
+    expect(await placement(attemptId)).toHaveLength(0);
+    const [rows] = await ctx.pool.query('SELECT COUNT(*) AS total FROM attempt_banks');
+    expect((rows as { total: number }[])[0]!.total).toBe(0);
+
+    // Pelo histórico do painel, volta para o painel.
+    const other = await startAttempt(ana, bankId);
+    await examPost(ana, other, 'finalizar', { confirmar: '1' });
+    const fromPanel = await postForm(ana, '/', `/simulados/${other}/excluir`, { voltar: 'painel' });
+    expect(fromPanel.headers.location).toBe('/');
+    expect((await ana.get('/')).text).not.toContain(`/simulados/${other}/relatorio`);
+  });
+
+  it('não apaga tentativa em andamento nem a de outra pessoa', async () => {
+    const { agent: ana } = await loggedUser('Ana Souza', 'ana@exemplo.com');
+    const { agent: bia } = await loggedUser('Bia Lima', 'bia@exemplo.com');
+    const bankId = await importBank(ana, simpleBank('Em andamento'));
+    const attemptId = await startAttempt(ana, bankId);
+
+    const res = await postForm(ana, `/bancos/${bankId}`, `/simulados/${attemptId}/excluir`);
+    expect(res.headers.location).toBe(`/bancos/${bankId}`);
+    expect((await ana.get(`/bancos/${bankId}`)).text).toContain(
+      'Só dá para excluir o relatório de uma tentativa finalizada.',
+    );
+    expect((await attemptRow(attemptId)).status).toBe('in_progress');
+
+    await examPost(ana, attemptId, 'finalizar', { confirmar: '1' });
+    expect((await postForm(bia, '/', `/simulados/${attemptId}/excluir`)).status).toBe(404);
+    expect((await attemptRow(attemptId)).status).toBe('finished');
   });
 });

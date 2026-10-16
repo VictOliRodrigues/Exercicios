@@ -1,10 +1,18 @@
 <%- include('partials/head', { pageWidth: 1040 }) %>
 <div class="page-header">
   <h1 class="title-lg">Olá, <%= firstName %></h1>
-  <a class="button button-primary" href="/bancos/importar">
-    <%- include('partials/icon', { iconName: 'download', iconClass: 'button-icon' }) %>
-    Importar simulado
-  </a>
+  <div class="page-actions">
+    <% if (canCombine) { %>
+      <a class="button button-secondary" href="/simulados/multiplos">
+        <%- include('partials/icon', { iconName: 'layers', iconClass: 'button-icon' }) %>
+        Múltiplos simulados
+      </a>
+    <% } %>
+    <a class="button button-primary" href="/bancos/importar">
+      <%- include('partials/icon', { iconName: 'download', iconClass: 'button-icon' }) %>
+      Importar simulado
+    </a>
+  </div>
 </div>
 
 <div class="stack">
@@ -20,6 +28,9 @@
           <li>
             <div class="list-card-main">
               <a class="list-card-title" href="/simulados/<%= attempt.id %>"><%= attempt.title %></a>
+              <% if (attempt.banks.length > 1) { %>
+                <div class="list-card-meta"><%= formatList(attempt.banks.map(function (bank) { return bank.title; })) %></div>
+              <% } %>
               <div class="list-card-meta">Iniciado em <%= formatDateTimeAt(attempt.startedAt) %> · <%= progressLabel %></div>
             </div>
             <div class="list-card-side">
@@ -108,17 +119,31 @@
           <% attempts.history.forEach(function (attempt) { %>
             <tr>
               <td data-label="Data" class="nowrap"><%= formatDateTime(attempt.finishedAt) %></td>
-              <td data-label="Simulado" class="break-anywhere"><%= attempt.title %></td>
+              <td data-label="Simulado" class="break-anywhere">
+                <div>
+                  <%= attempt.title %>
+                  <% if (attempt.banks.length > 1) { %><span class="cell-note"><%= formatList(attempt.banks.map(function (bank) { return bank.title; })) %></span><% } %>
+                </div>
+              </td>
               <td data-label="Nota" class="nowrap">
                 <span><strong><%= formatScore(attempt.score) %></strong><span class="muted"> · <%= attempt.correctCount ?? 0 %> de <%= attempt.totalQuestions %></span></span>
               </td>
-              <td data-label="Tempo">
+              <td data-label="Tempo" class="nowrap">
                 <div>
                   <%= formatDuration(attempt.durationSeconds) %>
                   <% if (attempt.finishReason === 'time') { %><span class="cell-note">Tempo esgotado</span><% } %>
                 </div>
               </td>
-              <td class="row-actions cell-end"><a class="link-strong" href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a></td>
+              <td class="row-actions">
+                <div class="row-actions-inline">
+                  <a class="link-strong" href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a>
+                  <form method="post" action="/simulados/<%= attempt.id %>/excluir" class="inline-form" data-confirm="Excluir este relatório? A nota e as respostas desta tentativa serão apagadas. Esta ação não pode ser desfeita.">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+                    <input type="hidden" name="voltar" value="painel">
+                    <button type="submit" class="button button-small button-ghost button-ghost-danger" aria-label="Excluir o relatório de <%= formatDateTime(attempt.finishedAt) %>">Excluir</button>
+                  </form>
+                </div>
+              </td>
             </tr>
           <% }) %>
         </tbody>

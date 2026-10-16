@@ -68,6 +68,22 @@ describe('embaralhamento e montagem da tentativa', () => {
     expect(options.size).toBeGreaterThan(1);
   });
 
+  it('sem embaralhar: questões na ordem recebida e alternativas na ordem do arquivo', () => {
+    const all = layOutAttempt(ids(25), 25, false);
+    expect(all.map((q) => q.questionId)).toEqual(ids(25));
+    expect(all.every((q) => q.optionOrder.join() === '0,1,2,3')).toBe(true);
+
+    // Sorteando menos, quais entram varia, mas elas continuam na ordem do arquivo.
+    const drawn = new Set<string>();
+    for (let i = 0; i < 20; i++) {
+      const sampled = layOutAttempt(ids(25), 7, false).map((q) => q.questionId);
+      expect(sampled).toHaveLength(7);
+      expect(sampled).toEqual([...sampled].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1))));
+      drawn.add(sampled.join());
+    }
+    expect(drawn.size).toBeGreaterThan(1);
+  });
+
   it('usa o gerador recebido (ordem previsível nos testes)', () => {
     // random sempre 0: cada passo troca o último com o primeiro.
     expect(shuffle([1, 2, 3, 4], () => 0)).toEqual([2, 3, 4, 1]);

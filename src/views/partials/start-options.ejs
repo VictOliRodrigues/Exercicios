@@ -1,0 +1,45 @@
+<%# Opções de "Iniciar simulado": quantidade, tempo limite e ordem. values traz o que a pessoa já tinha preenchido. %>
+<%
+  const v = locals.values || {};
+  const sampling = v.modoQuantidade === 'sortear';
+  const limited = v.modoTempo === 'limite';
+%>
+<fieldset class="choice-group">
+  <legend>Quantidade de questões</legend>
+  <div class="choice-list">
+    <label class="choice">
+      <input type="radio" name="modoQuantidade" value="todas"<% if (!sampling) { %> checked<% } %>>
+      <%= allLabel %>
+    </label>
+    <div class="choice">
+      <input type="radio" name="modoQuantidade" value="sortear" id="modo-sortear"<% if (sampling) { %> checked<% } %>>
+      <label for="modo-sortear">Sortear</label>
+      <input class="number-input" type="number" name="quantidade" value="<%= v.quantidade ?? Math.min(20, maxCount) %>" min="1" max="<%= maxCount %>" step="1" inputmode="numeric" aria-label="Quantas questões sortear" data-checks="modo-sortear">
+      <span class="choice-unit">questões</span>
+    </div>
+  </div>
+</fieldset>
+<fieldset class="choice-group">
+  <legend>Tempo limite</legend>
+  <div class="choice-list">
+    <label class="choice">
+      <input type="radio" name="modoTempo" value="sem-limite"<% if (!limited) { %> checked<% } %>>
+      Sem limite
+    </label>
+    <div class="choice">
+      <input type="radio" name="modoTempo" value="limite" id="modo-limite"<% if (limited) { %> checked<% } %>>
+      <label for="modo-limite">Limite de</label>
+      <input class="number-input" type="number" name="minutos" value="<%= v.minutos ?? 60 %>" min="1" max="<%= maxMinutes %>" step="1" inputmode="numeric" aria-label="Tempo limite em minutos" aria-describedby="tempo-dica" data-checks="modo-limite">
+      <span class="choice-unit">minutos</span>
+    </div>
+  </div>
+  <p class="hint" id="tempo-dica">Quando o tempo acaba, a prova é finalizada sozinha.</p>
+</fieldset>
+<fieldset class="choice-group">
+  <legend>Ordem</legend>
+  <label class="choice">
+    <input type="checkbox" name="embaralhar" value="1" aria-describedby="ordem-dica"<% if (v.embaralhar !== false) { %> checked<% } %>>
+    Embaralhar questões e alternativas
+  </label>
+  <p class="hint" id="ordem-dica">Desmarcado, as questões e as alternativas ficam na ordem do arquivo.</p>
+</fieldset>

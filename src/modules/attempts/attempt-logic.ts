@@ -31,22 +31,26 @@ export interface LaidOutQuestion {
 }
 
 /**
- * Monta uma tentativa nova: sorteia `count` questões (todas, se não informado), embaralha a ordem
- * das questões e das alternativas, numera de 1 a N e distribui em páginas de 10.
+ * Monta uma tentativa nova: sorteia `count` questões (todas, se não informado), numera de 1 a N e
+ * distribui em páginas de 10. Embaralhando, a ordem das questões e das alternativas muda; sem
+ * embaralhar, as sorteadas ficam na ordem recebida e as alternativas na ordem do arquivo.
  */
 export function layOutAttempt(
   questionIds: readonly string[],
   count = questionIds.length,
+  shuffled = true,
   random = randomInt,
 ): LaidOutQuestion[] {
-  const chosen = shuffle(questionIds, random).slice(0, count);
+  const drawn = shuffle(questionIds, random).slice(0, count);
+  const kept = new Set(drawn);
+  const chosen = shuffled ? drawn : questionIds.filter((id) => kept.has(id));
   const original = Array.from({ length: OPTION_COUNT }, (_, i) => i);
   return chosen.map((questionId, index) => ({
     questionId,
     number: index + 1,
     page: pageOf(index),
     sort: index + 1,
-    optionOrder: shuffle(original, random),
+    optionOrder: shuffled ? shuffle(original, random) : original,
   }));
 }
 

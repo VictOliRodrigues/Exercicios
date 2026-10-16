@@ -1,0 +1,5 @@
+<%# Só aparece com JS (o app.js tira o hidden): sem JS, vale o tema do sistema. %>
+<button type="button" class="theme-toggle<%= locals.toggleClass ? ' ' + toggleClass : '' %>" data-theme-toggle hidden aria-label="Alternar modo claro e escuro">
+  <%- include('icon', { iconName: 'moon', iconClass: 'theme-icon-moon' }) %>
+  <%- include('icon', { iconName: 'sun', iconClass: 'theme-icon-sun' }) %>
+</button>

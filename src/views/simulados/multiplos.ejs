@@ -1,0 +1,51 @@
+<%- include('../partials/head', { pageWidth: 880 }) %>
+<nav class="breadcrumb" aria-label="Você está em">
+  <a href="/">Painel</a><span class="breadcrumb-separator" aria-hidden="true">›</span><span aria-current="page">Múltiplos simulados</span>
+</nav>
+<div class="page-header">
+  <div>
+    <h1 class="title-lg">Múltiplos simulados</h1>
+    <p class="page-lead">Marque os simulados que vão entrar. As questões de todos eles viram uma prova só, com um relatório só.</p>
+  </div>
+</div>
+
+<%- include('../partials/errors', { errors }) %>
+
+<form method="post" action="/simulados/multiplos" class="stack stack-tight">
+  <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+
+  <section class="card list-card" aria-labelledby="simulados">
+    <div class="list-card-header">
+      <h2 id="simulados">Simulados</h2>
+      <% if (choices.length) { %><span class="list-card-count"><%= plural(choices.length, 'disponível', 'disponíveis') %></span><% } %>
+    </div>
+    <% if (!choices.length) { %>
+      <p class="list-card-empty">Você ainda não tem simulados. <a href="/bancos/importar">Importe um arquivo .md</a> para começar.</p>
+    <% } else { %>
+      <ul class="list-card-rows pick-list">
+        <% choices.forEach(function (bank) { %>
+          <li>
+            <label class="pick">
+              <input type="checkbox" name="bancos" value="<%= bank.id %>"<% if (selected.includes(bank.id)) { %> checked<% } %>>
+              <span class="list-card-main">
+                <span class="pick-title"><%= bank.title %></span>
+                <span class="list-card-meta"><%= plural(bank.questionCount, 'questão', 'questões') %> · <%= bank.origin %></span>
+              </span>
+            </label>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </section>
+
+  <% if (choices.length) { %>
+    <section class="card" aria-labelledby="opcoes">
+      <h2 class="section-heading" id="opcoes">Opções</h2>
+      <div class="start-form">
+        <%- include('../partials/start-options', { allLabel: 'Todas as questões dos simulados marcados', maxCount: totalQuestions }) %>
+        <button type="submit" class="button button-primary">Iniciar simulado</button>
+      </div>
+    </section>
+  <% } %>
+</form>
+<%- include('../partials/foot') %>
