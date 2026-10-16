@@ -1,5 +1,5 @@
-// Comportamentos comuns das telas. Sem JS, tudo continua funcionando (só sem cópia rápida e sem
-// a pergunta de confirmação).
+// Comportamentos comuns das telas. Sem JS, tudo continua funcionando (só sem cópia rápida, sem
+// a pergunta de confirmação e sem o botão de modo claro/escuro).
 
 // Botão "Copiar": <button data-copy="id-do-elemento">. Copia o valor de um campo ou o texto.
 document.addEventListener('click', async (event) => {
@@ -54,3 +54,34 @@ document.addEventListener('submit', (event) => {
   const form = event.target.closest('form[data-confirm]');
   if (form && !window.confirm(form.dataset.confirm)) event.preventDefault();
 });
+
+// Modo claro/escuro. Sem escolha, vale o tema do sistema. O botão grava a escolha num cookie, que o
+// servidor lê para já mandar a página no tema certo.
+// Fica num bloco porque os scripts das páginas (prova.js) dividem o mesmo escopo global.
+{
+  const root = document.documentElement;
+  const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+  const themeButtons = document.querySelectorAll('[data-theme-toggle]');
+  const isDark = () => (root.dataset.theme ? root.dataset.theme === 'dark' : systemDark.matches);
+
+  const syncThemeButtons = () => {
+    const label = isDark() ? 'Mudar para o modo claro' : 'Mudar para o modo escuro';
+    for (const button of themeButtons) {
+      button.setAttribute('aria-label', label);
+      button.title = label;
+      button.hidden = false;
+    }
+  };
+
+  for (const button of themeButtons) {
+    button.addEventListener('click', () => {
+      const theme = isDark() ? 'light' : 'dark';
+      root.dataset.theme = theme;
+      const secure = window.location.protocol === 'https:' ? '; secure' : '';
+      document.cookie = `tema=${theme}; path=/; max-age=31536000; samesite=lax${secure}`;
+      syncThemeButtons();
+    });
+  }
+  systemDark.addEventListener('change', syncThemeButtons);
+  syncThemeButtons();
+}

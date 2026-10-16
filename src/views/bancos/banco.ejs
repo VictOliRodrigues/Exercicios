@@ -12,7 +12,6 @@
   }
   const originClass = !isOwner && !viaGroups.length ? 'badge-teal' : isOwner && sharedGroups.length ? 'badge-info' : 'badge-muted';
   const sharedIds = sharedGroups.map(function (group) { return group.id; });
-  const sampleCount = Math.min(20, bank.questionCount);
 %>
 <nav class="breadcrumb" aria-label="Você está em">
   <a href="/">Painel</a><span class="breadcrumb-separator" aria-hidden="true">›</span><span aria-current="page"><%= title %></span>
@@ -91,7 +90,15 @@
                       <% if (attempt.finishReason === 'time') { %><span class="cell-note">Tempo esgotado</span><% } %>
                     </div>
                   </td>
-                  <td class="row-actions cell-end"><a class="link-strong" href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a></td>
+                  <td class="row-actions">
+                    <div class="row-actions-inline row-actions-inline-tight">
+                      <a class="button button-small button-secondary" href="/simulados/<%= attempt.id %>/relatorio">Ver relatório</a>
+                      <form method="post" action="/simulados/<%= attempt.id %>/excluir" class="inline-form" data-confirm="Excluir este relatório? A nota e as respostas desta tentativa serão apagadas. Esta ação não pode ser desfeita.">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+                        <button type="submit" class="button button-small button-danger-outline">Excluir</button>
+                      </form>
+                    </div>
+                  </td>
                 <% } %>
               </tr>
             <% }) %>
@@ -105,37 +112,7 @@
     <h2 class="section-heading" id="novo-simulado">Novo simulado</h2>
     <form method="post" action="/bancos/<%= bank.id %>/simulados" class="start-form">
       <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
-      <fieldset class="choice-group">
-        <legend>Quantidade de questões</legend>
-        <div class="choice-list">
-          <label class="choice">
-            <input type="radio" name="modoQuantidade" value="todas" checked>
-            Todas (<%= bank.questionCount %>)
-          </label>
-          <div class="choice">
-            <input type="radio" name="modoQuantidade" value="sortear" id="modo-sortear">
-            <label for="modo-sortear">Sortear</label>
-            <input class="number-input" type="number" name="quantidade" value="<%= sampleCount %>" min="1" max="<%= bank.questionCount %>" step="1" inputmode="numeric" aria-label="Quantas questões sortear" data-checks="modo-sortear">
-            <span class="choice-unit">questões</span>
-          </div>
-        </div>
-      </fieldset>
-      <fieldset class="choice-group">
-        <legend>Tempo limite</legend>
-        <div class="choice-list">
-          <label class="choice">
-            <input type="radio" name="modoTempo" value="sem-limite" checked>
-            Sem limite
-          </label>
-          <div class="choice">
-            <input type="radio" name="modoTempo" value="limite" id="modo-limite">
-            <label for="modo-limite">Limite de</label>
-            <input class="number-input" type="number" name="minutos" value="60" min="1" max="<%= maxMinutes %>" step="1" inputmode="numeric" aria-label="Tempo limite em minutos" aria-describedby="tempo-dica" data-checks="modo-limite">
-            <span class="choice-unit">minutos</span>
-          </div>
-        </div>
-        <p class="hint" id="tempo-dica">Quando o tempo acaba, a prova é finalizada sozinha.</p>
-      </fieldset>
+      <%- include('../partials/start-options', { allLabel: 'Todas (' + bank.questionCount + ')', maxCount: bank.questionCount }) %>
       <button type="submit" class="button button-primary">Iniciar novo simulado</button>
     </form>
   </section>

@@ -2,7 +2,13 @@ import { and, asc, count, desc, eq, inArray, isNotNull, lte } from 'drizzle-orm'
 import { v7 as uuidv7 } from 'uuid';
 import type { CryptoService } from '../../crypto/index.js';
 import type { Database } from '../../db/client.js';
-import { attemptQuestions, attempts, questionBanks, questions } from '../../db/schema.js';
+import {
+  attemptBanks,
+  attemptQuestions,
+  attempts,
+  questionBanks,
+  questions,
+} from '../../db/schema.js';
 import { decryptQuestion, decryptTitle } from '../banks/banks.service.js';
 import {
   acceptsAnswers,
@@ -19,27 +25,46 @@ export type AttemptRow = typeof attempts.$inferSelect;
 
 const INSERT_BATCH = 200;
 
+/** Título de uma tentativa que junta vários simulados. */
+export const MULTIPLE_TITLE = 'Múltiplos simulados';
+
+export interface AttemptBank {
+  id: string;
+  title: string;
+}
+
+/** Com um simulado só, o título dele; com vários, "Múltiplos simulados". */
+export const attemptTitle = (banks: readonly AttemptBank[]) =>
+  banks.length === 1 ? banks[0]!.title : MULTIPLE_TITLE;
+
 export interface StartOptions {
   userId: string;
-  bankId: string;
+  /** Um simulado, ou vários para juntar numa prova só (na ordem em que foram escolhidos). */
+  bankIds: string[];
   /** Quantas questões sortear; sem valor, todas. */
   count?: number;
   timeLimitSeconds: number | null;
+  /** Embaralhar a ordem das questões e das alternativas. */
+  shuffled: boolean;
 }
 
 /**
- * "Iniciar novo simulado": sorteia, embaralha questões e alternativas, numera, distribui em
- * páginas de 10 e grava o início com a hora do servidor (e o prazo, se houver tempo limite).
+ * "Iniciar novo simulado": sorteia, embaralha (se pedido), numera, distribui em páginas de 10 e
+ * grava o início com a hora do servidor (e o prazo, se houver tempo limite). Sem embaralhar, as
+ * questões seguem a ordem dos simulados escolhidos e, dentro de cada um, a do arquivo.
  */
 export async function startAttempt(db: Database, options: StartOptions): Promise<string> {
+  const bankOrder = new Map(options.bankIds.map((bankId, index) => [bankId, index]));
   const rows = await db
-    .select({ id: questions.id })
+    .select({ id: questions.id, bankId: questions.bankId })
     .from(questions)
-    .where(eq(questions.bankId, options.bankId))
+    .where(inArray(questions.bankId, options.bankIds))
     .orderBy(asc(questions.position));
+  rows.sort((a, b) => bankOrder.get(a.bankId)! - bankOrder.get(b.bankId)!);
   const laidOut = layOutAttempt(
     rows.map((row) => row.id),
     options.count,
+    options.shuffled,
   );
   const id = uuidv7();
   const startedAt = new Date();
@@ -47,7 +72,7 @@ export async function startAttempt(db: Database, options: StartOptions): Promise
     await tx.insert(attempts).values({
       id,
       userId: options.userId,
-      bankId: options.bankId,
+      bankId: options.bankIds.length === 1 ? options.bankIds[0] : null,
       status: 'in_progress',
       totalQuestions: laidOut.length,
       timeLimitSeconds: options.timeLimitSeconds,
@@ -56,6 +81,11 @@ export async function startAttempt(db: Database, options: StartOptions): Promise
         ? new Date(startedAt.getTime() + options.timeLimitSeconds * 1000)
         : null,
     });
+    await tx
+      .insert(attemptBanks)
+      .values(
+        options.bankIds.map((bankId, index) => ({ attemptId: id, bankId, position: index + 1 })),
+      );
     const values = laidOut.map((question) => ({ attemptId: id, ...question }));
     for (let i = 0; i < values.length; i += INSERT_BATCH) {
       await tx.insert(attemptQuestions).values(values.slice(i, i + INSERT_BATCH));
@@ -379,8 +409,18 @@ export async function discardAttempt(db: Database, attemptId: string): Promise<b
   return result.affectedRows > 0;
 }
 
+/** Exclui o relatório: a tentativa finalizada some, com as respostas (em cascata). */
+export async function deleteReport(db: Database, attemptId: string): Promise<boolean> {
+  const [result] = await db
+    .delete(attempts)
+    .where(and(eq(attempts.id, attemptId), eq(attempts.status, 'finished')));
+  return result.affectedRows > 0;
+}
+
 export interface ReportItem {
   number: number;
+  /** Simulado de onde a questão veio (aparece quando a prova junta vários). */
+  bankId: string;
   statementHtml: string;
   /** Letra e texto da resposta do usuário; null se ficou em branco. */
   selected: { letter: number; html: string } | null;
@@ -399,6 +439,7 @@ export async function loadReportItems(
       number: attemptQuestions.number,
       optionOrder: attemptQuestions.optionOrder,
       selected: attemptQuestions.selectedOption,
+      bankId: questions.bankId,
       payloadEnc: questions.payloadEnc,
     })
     .from(attemptQuestions)
@@ -414,6 +455,7 @@ export async function loadReportItems(
     });
     return {
       number: row.number,
+      bankId: row.bankId,
       statementHtml: payload.statementHtml,
       selected: row.selected === null ? null : choice(row.selected),
       correct: choice(payload.correct),
@@ -437,7 +479,7 @@ async function answeredCounts(db: Database, attemptIds: string[]) {
 
 export interface AttemptSummary {
   id: string;
-  bankId: string;
+  bankId: string | null;
   status: AttemptRow['status'];
   totalQuestions: number;
   answered: number;
@@ -477,28 +519,56 @@ export async function listAttemptsForBank(db: Database, userId: string, bankId: 
   return rows.map((row) => summaryOf(row, answered));
 }
 
-/** Tentativas do usuário, com o título do simulado: em andamento e histórico do painel. */
+/** Simulados de cada tentativa, na ordem escolhida (mesmo os excluídos, para mostrar o nome). */
+export async function listAttemptBanks(
+  db: Database,
+  crypto: CryptoService,
+  attemptIds: string[],
+): Promise<Map<string, AttemptBank[]>> {
+  const byAttempt = new Map<string, AttemptBank[]>();
+  if (!attemptIds.length) return byAttempt;
+  const rows = await db
+    .select({
+      attemptId: attemptBanks.attemptId,
+      id: questionBanks.id,
+      titleEnc: questionBanks.titleEnc,
+    })
+    .from(attemptBanks)
+    .innerJoin(questionBanks, eq(questionBanks.id, attemptBanks.bankId))
+    .where(inArray(attemptBanks.attemptId, attemptIds))
+    .orderBy(asc(attemptBanks.position));
+  const titles = new Map<string, string>();
+  for (const row of rows) {
+    let title = titles.get(row.id);
+    if (title === undefined) {
+      title = decryptTitle(crypto, row);
+      titles.set(row.id, title);
+    }
+    byAttempt.set(row.attemptId, [...(byAttempt.get(row.attemptId) ?? []), { id: row.id, title }]);
+  }
+  return byAttempt;
+}
+
+/** Tentativas do usuário, com o título: em andamento e histórico do painel. */
 export async function listAttemptsOfUser(db: Database, crypto: CryptoService, userId: string) {
   const rows = await db
-    .select({ attempt: attempts, bankId: questionBanks.id, titleEnc: questionBanks.titleEnc })
+    .select()
     .from(attempts)
-    .innerJoin(questionBanks, eq(questionBanks.id, attempts.bankId))
     .where(eq(attempts.userId, userId))
     .orderBy(desc(attempts.startedAt));
   const answered = await answeredCounts(
     db,
-    rows.filter((row) => row.attempt.status === 'in_progress').map((row) => row.attempt.id),
+    rows.filter((row) => row.status === 'in_progress').map((row) => row.id),
   );
-  const titles = new Map<string, string>();
-  const titleOf = (row: { bankId: string; titleEnc: string }) => {
-    let title = titles.get(row.bankId);
-    if (title === undefined) {
-      title = decryptTitle(crypto, { id: row.bankId, titleEnc: row.titleEnc });
-      titles.set(row.bankId, title);
-    }
-    return title;
-  };
-  const items = rows.map((row) => ({ ...summaryOf(row.attempt, answered), title: titleOf(row) }));
+  const banksOf = await listAttemptBanks(
+    db,
+    crypto,
+    rows.map((row) => row.id),
+  );
+  const items = rows.map((row) => {
+    const banks = banksOf.get(row.id) ?? [];
+    return { ...summaryOf(row, answered), title: attemptTitle(banks), banks };
+  });
   return {
     inProgress: items.filter((item) => item.status === 'in_progress'),
     history: items

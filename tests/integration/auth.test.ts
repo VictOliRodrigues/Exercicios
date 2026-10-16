@@ -54,6 +54,18 @@ describe('páginas públicas', () => {
     expect(res.text).toContain('Ir para o login');
   });
 
+  it('o tema escolhido no botão (cookie) já vem no HTML; sem escolha, vale o do sistema', async () => {
+    const dark = await request(ctx.app).get('/login').set('Cookie', 'tema=dark');
+    expect(dark.text).toContain('<html lang="pt-BR" data-theme="dark">');
+    const light = await request(ctx.app).get('/nao-existe').set('Cookie', 'outro=1; tema=light');
+    expect(light.text).toContain('<html lang="pt-BR" data-theme="light">');
+    for (const cookie of [undefined, 'tema="><script>', 'meutema=dark']) {
+      const req = request(ctx.app).get('/login');
+      const res = cookie ? await req.set('Cookie', cookie) : await req;
+      expect(res.text).toContain('<html lang="pt-BR">');
+    }
+  });
+
   it('a página inicial sem login leva ao login', async () => {
     const res = await request(ctx.app).get('/');
     expect(res.status).toBe(302);

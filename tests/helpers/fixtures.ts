@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { v7 as uuidv7 } from 'uuid';
-import { attempts } from '../../src/db/schema.js';
+import { attemptBanks, attempts } from '../../src/db/schema.js';
 import { addMembers, createGroup } from '../../src/modules/groups/groups.service.js';
 import { createUser, type NewUser } from '../../src/modules/users/users.service.js';
 import { csrfFrom, login, type buildTestApp } from './test-app.js';
@@ -72,28 +72,38 @@ export function fixtures(ctx: () => TestContext) {
 
   /** Simula "já fez" direto no banco, sem passar pela tela de iniciar. */
   async function addAttempt(userId: string, bankId: string) {
+    const id = uuidv7();
     await ctx().db.insert(attempts).values({
-      id: uuidv7(),
+      id,
       userId,
       bankId,
       status: 'in_progress',
       totalQuestions: 1,
       startedAt: new Date(),
     });
+    await ctx().db.insert(attemptBanks).values({ attemptId: id, bankId, position: 1 });
   }
 
-  /** "Iniciar novo simulado" pela página do simulado; devolve o id da tentativa. */
+  /**
+   * "Iniciar novo simulado" pela página do simulado; devolve o id da tentativa. Como na tela, a
+   * caixa "Embaralhar" vem marcada (embaralhar: false a desmarca).
+   */
   async function startAttempt(
     user: ReturnType<typeof agent>,
     bankId: string,
-    options: {
+    {
+      embaralhar = true,
+      ...options
+    }: {
       quantidade?: string;
       minutos?: string;
       modoQuantidade?: string;
       modoTempo?: string;
+      embaralhar?: boolean;
     } = {},
   ) {
-    const res = await postForm(user, `/bancos/${bankId}`, `/bancos/${bankId}/simulados`, options);
+    const body = embaralhar ? { ...options, embaralhar: '1' } : options;
+    const res = await postForm(user, `/bancos/${bankId}`, `/bancos/${bankId}/simulados`, body);
     const match = /^\/simulados\/([0-9a-f-]{36})$/.exec(res.headers.location ?? '');
     if (!match) throw new Error(`Início falhou (${res.status}): ${res.headers.location}`);
     return match[1]!;

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR"<% if (locals.theme) { %> data-theme="<%= theme %>"<% } %>>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -35,6 +35,7 @@
         </nav>
       <% } %>
       <div class="user-menu">
+        <%- include('theme-toggle', { toggleClass: 'topbar-icon-button' }) %>
         <span class="user-name"><%= currentUser.name %></span>
         <% if (!currentUser.mustChangePassword) { %>
           <a href="/alterar-senha"<% if (locals.currentPath === '/alterar-senha') { %> aria-current="page"<% } %>>Alterar senha</a>
@@ -46,6 +47,8 @@
       </div>
     </div>
   </header>
+<% } else { %>
+  <%- include('theme-toggle', { toggleClass: 'theme-toggle-floating' }) %>
 <% } %>
 <main class="<%= locals.layout === 'centered' ? 'centered' : 'page' + (locals.pageWidth ? ' page-' + pageWidth : '') %>">
 <% (locals.flash || []).forEach(function (item) { %>

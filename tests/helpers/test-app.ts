@@ -15,6 +15,7 @@ import { createDatabase, runMigrations, type Pool } from '../../src/db/client.js
 
 const TABLES = [
   'attempt_questions',
+  'attempt_banks',
   'attempts',
   'questions',
   'question_bank_groups',
