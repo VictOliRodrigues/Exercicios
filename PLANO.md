@@ -94,7 +94,7 @@ Enunciado da questão. Pode ter **negrito**, `código`, tabelas, listas e blocos
 | `# Título` | Opcional, só no topo. Vira o nome do simulado. Sem ele, o sistema usa o nome do arquivo. |
 | `## ...` | Começa uma questão. O sistema numera sozinho. |
 | Enunciado | Tudo o que fica entre o `##` e as alternativas. Não pode ser vazio. Se não houver nada entre os dois, o texto do próprio `##` vira o enunciado. |
-| Alternativas | A **última** lista de tarefas da questão: **exatamente 4 itens** e **exatamente 1** marcado com `[x]` (ou `[X]`). |
+| Alternativas | A **última** lista de tarefas da questão: **4 ou 5 itens** (o arquivo pode misturar) e **exatamente 1** marcado com `[x]` (ou `[X]`). |
 | Ordem das alternativas | O sistema **embaralha** as alternativas. Por isso, uma alternativa como "todas as anteriores", "nenhuma das anteriores" ou "alternativas A e B" é **erro de importação**. |
 | Texto depois das alternativas | É ignorado e gera um aviso (não bloqueia a importação). Cobre o caso de o ChatGPT acrescentar gabarito ou explicação. |
 | Texto antes da 1ª questão | É ignorado e gera um aviso. |
@@ -111,7 +111,7 @@ A importação é **tudo ou nada**: se houver qualquer erro, nada é salvo. A te
 
 **1. Lista para o usuário**, com o número da questão e a linha do arquivo:
 
-- `Questão 3 (linha 27): encontrei 3 alternativas, esperado 4.`
+- `Questão 3 (linha 27): encontrei 3 alternativas, esperado 4 ou 5.`
 - `Questão 5 (linha 41): nenhuma alternativa marcada como correta.`
 - `Questão 8 (linha 70): 2 alternativas marcadas como corretas.`
 - `Questão 9 (linha 82): enunciado vazio.`
@@ -123,14 +123,14 @@ A importação é **tudo ou nada**: se houver qualquer erro, nada é salvo. A te
 ```text
 O arquivo .md que você gerou não pôde ser importado no sistema de simulados. Problemas encontrados:
 
-1. Questão 3 ("Qual é a função do método map…"): tem 3 alternativas; precisa ter exatamente 4.
+1. Questão 3 ("Qual é a função do método map…"): tem 3 alternativas; precisa ter 4 ou 5.
 2. Questão 5 ("Sobre o protocolo HTTP, é correto…"): nenhuma alternativa marcada como correta; marque exatamente uma com - [x].
 3. Questão 11 ("Assinale a alternativa que…"): a alternativa "Todas as anteriores" depende da ordem, mas o sistema embaralha as alternativas; troque por outra.
 
 Corrija apenas esses problemas, sem alterar as outras questões, e me envie novamente o arquivo .md COMPLETO, com todas as questões, seguindo as mesmas regras de formato:
 - # Título na primeira linha;
 - cada questão começa com ## Questão N;
-- enunciado, linha em branco e 4 alternativas no formato - [ ] texto, com a correta como - [x] texto;
+- enunciado, linha em branco e 4 ou 5 alternativas no formato - [ ] texto, com a correta como - [x] texto;
 - nada de HTML, imagens ou texto depois das alternativas.
 ```
 
@@ -236,7 +236,7 @@ O botão **Iniciar novo simulado**:
 Cada tentativa tem sorteio, ordem e opções próprios. A ordem fica gravada para o relatório mostrar as letras como o usuário viu.
 
 ### 5.9 Fazer a prova
-- Cada página mostra **10 questões**, com enunciado e 4 alternativas em radio (A–D, na ordem embaralhada). **O HTML da prova não contém o gabarito.**
+- Cada página mostra **10 questões**, com enunciado e 4 ou 5 alternativas em radio (A–D ou A–E, na ordem embaralhada). **O HTML da prova não contém o gabarito.**
 - Uma barra fixa mostra:
   - o tempo decorrido (`hh:mm:ss`);
   - o tempo restante, se houver limite (fica vermelho nos últimos 5 minutos);
@@ -401,7 +401,8 @@ Sem nenhuma linha nesta tabela, o simulado é privado. As linhas são apagadas q
 | `id` | CHAR(36) PK | |
 | `bank_id` | FK → question_banks | |
 | `position` | INT | ordem no arquivo (1..N) |
-| `payload_enc` | MEDIUMTEXT | JSON criptografado: `{ statementHtml, options[4], correct (0–3), sourceLine }` |
+| `payload_enc` | MEDIUMTEXT | JSON criptografado: `{ statementHtml, options[4 ou 5], correct (0–3 ou 0–4), sourceLine }` |
+| `option_count` | TINYINT | 4 ou 5; fora do payload para montar a prova sem decifrar as questões |
 
 ### `attempts` (tentativas)
 | Coluna | Tipo | Observação |
@@ -431,7 +432,7 @@ Sem nenhuma linha nesta tabela, o simulado é privado. As linhas são apagadas q
 | `page` | INT | página atual; muda ao reorganizar as em branco |
 | `sort` | INT | ordem dentro da prova |
 | `option_order` | JSON | ex.: `[2,0,3,1]`, ou seja, a letra A mostra a alternativa original 2 |
-| `selected_option` | TINYINT NULL | índice **original** (0–3), comparado direto com o gabarito |
+| `selected_option` | TINYINT NULL | índice **original** (0–3 ou 0–4), comparado direto com o gabarito |
 | `is_correct` | BOOLEAN NULL | preenchido ao finalizar |
 | `answered_at` | DATETIME(3) NULL | |
 
@@ -697,6 +698,6 @@ As fases são entregues em 4 blocos. Cada bloco termina com algo que dá para te
 | Sortear N questões | sim, opcional |
 | Gráfico de evolução | não |
 | Imagens | não, por enquanto |
-| Resposta enviada pelo navegador | a letra vista (A–D); o servidor converte para o índice original, que nunca vai para a página (a posição no arquivo poderia dar pista do gabarito) |
+| Resposta enviada pelo navegador | a letra vista (A–D ou A–E); o servidor converte para o índice original, que nunca vai para a página (a posição no arquivo poderia dar pista do gabarito) |
 | Tempo limite máximo | 600 minutos |
 | Dono que exclui o simulado | perde o simulado, mas os próprios relatórios continuam no histórico |

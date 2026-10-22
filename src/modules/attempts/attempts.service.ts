@@ -56,16 +56,12 @@ export interface StartOptions {
 export async function startAttempt(db: Database, options: StartOptions): Promise<string> {
   const bankOrder = new Map(options.bankIds.map((bankId, index) => [bankId, index]));
   const rows = await db
-    .select({ id: questions.id, bankId: questions.bankId })
+    .select({ id: questions.id, bankId: questions.bankId, optionCount: questions.optionCount })
     .from(questions)
     .where(inArray(questions.bankId, options.bankIds))
     .orderBy(asc(questions.position));
   rows.sort((a, b) => bankOrder.get(a.bankId)! - bankOrder.get(b.bankId)!);
-  const laidOut = layOutAttempt(
-    rows.map((row) => row.id),
-    options.count,
-    options.shuffled,
-  );
+  const laidOut = layOutAttempt(rows, options.count, options.shuffled);
   const id = uuidv7();
   const startedAt = new Date();
   await db.transaction(async (tx) => {
@@ -210,7 +206,8 @@ export interface AnswerInput {
 
 /**
  * Grava as respostas. Recusa (accepted = false) se a tentativa já terminou ou se passou do prazo
- * mais a tolerância de 5 s. Devolve também quantas questões estão respondidas.
+ * mais a tolerância de 5 s. Devolve também quantas questões estão respondidas e quantas respostas
+ * foram ignoradas por apontar uma questão ou uma letra que não existe (a letra E numa questão de 4).
  */
 export async function saveAnswers(db: Database, attemptId: string, answers: AnswerInput[]) {
   return db.transaction(async (tx) => {
@@ -220,7 +217,7 @@ export async function saveAnswers(db: Database, attemptId: string, answers: Answ
       .where(eq(attempts.id, attemptId))
       .for('share');
     if (!attempt || attempt.status !== 'in_progress' || !acceptsAnswers(attempt.deadlineAt)) {
-      return { accepted: false, answered: 0 };
+      return { accepted: false, answered: 0, ignored: 0 };
     }
 
     const rows = await tx
@@ -235,11 +232,16 @@ export async function saveAnswers(db: Database, attemptId: string, answers: Answ
     const byNumber = new Map(rows.map((row) => [row.number, row]));
     const now = new Date();
     let answered = rows.filter((row) => row.selected !== null).length;
+    let ignored = 0;
 
     for (const answer of answers) {
       const row = byNumber.get(answer.number);
       const option = row ? originalOption(row.optionOrder, answer.letter) : null;
-      if (!row || option === null || option === row.selected) continue;
+      if (!row || option === null) {
+        ignored++;
+        continue;
+      }
+      if (option === row.selected) continue;
       await tx
         .update(attemptQuestions)
         .set({ selectedOption: option, answeredAt: now })
@@ -252,7 +254,7 @@ export async function saveAnswers(db: Database, attemptId: string, answers: Answ
       if (row.selected === null) answered++;
       row.selected = option;
     }
-    return { accepted: true, answered };
+    return { accepted: true, answered, ignored };
   });
 }
 
@@ -275,7 +277,7 @@ function listPlacement(db: Database, attemptId: string) {
 export interface ExamQuestion {
   number: number;
   statementHtml: string;
-  /** Na ordem embaralhada desta tentativa (A–D). */
+  /** Na ordem embaralhada desta tentativa (A–D, ou A–E com 5 alternativas). */
   options: string[];
   selectedLetter: number | null;
 }

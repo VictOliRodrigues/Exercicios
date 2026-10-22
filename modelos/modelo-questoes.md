@@ -1,12 +1,13 @@
 # Modelo de simulado
 
 ## Questão 1
-Quantas alternativas cada questão do simulado deve ter?
+Quantas alternativas cada questão do simulado pode ter?
 
-- [ ] 2
-- [ ] 3
-- [x] 4
-- [ ] 5
+- [ ] Exatamente 3.
+- [ ] Exatamente 4.
+- [x] 4 ou 5.
+- [ ] Exatamente 5.
+- [ ] Quantas o autor quiser.
 
 ## Questão 2
 Como se marca a alternativa correta no arquivo de questões?

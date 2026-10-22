@@ -31,8 +31,8 @@ describe('parser de questões', () => {
     expect(result.title).toBe('Modelo de simulado');
     expect(result.questions).toHaveLength(5);
     expect(result.questions.map((q) => q.correct)).toEqual([2, 1, 1, 2, 0]);
-    expect(result.questions.map((q) => q.sourceLine)).toEqual([3, 11, 19, 34, 48]);
-    for (const q of result.questions) expect(q.optionsHtml).toHaveLength(4);
+    expect(result.questions.map((q) => q.sourceLine)).toEqual([3, 12, 20, 35, 49]);
+    expect(result.questions.map((q) => q.optionsHtml.length)).toEqual([5, 4, 4, 4, 4]);
   });
 
   it('gera HTML com código, listas e tabelas, e alternativas sem <p> em volta', () => {
@@ -56,12 +56,22 @@ describe('parser de questões', () => {
     expect(result.questions.map((q) => q.position)).toEqual([1, 2]);
   });
 
-  it('acusa 3 ou 5 alternativas', () => {
-    const three = question('Três?', FOUR.slice(0, 3));
+  it('aceita 4 ou 5 alternativas, misturadas no mesmo arquivo', () => {
     const five = question('Cinco?', [...FOUR, [' ', 'cinco']]);
-    expect(messages(`# T\n\n${three}\n${five}`)).toEqual([
-      'Questão 1 (linha 6): encontrei 3 alternativas, esperado 4.',
-      'Questão 2 (linha 13): encontrei 5 alternativas, esperado 4.',
+    const result = parseQuestions(`# T\n\n${question('Quatro?', FOUR)}\n${five}`);
+    expect(result.errors).toEqual([]);
+    expect(result.questions.map((q) => q.optionsHtml)).toEqual([
+      ['um', 'dois', 'três', 'quatro'],
+      ['um', 'dois', 'três', 'quatro', 'cinco'],
+    ]);
+  });
+
+  it('acusa 3 ou 6 alternativas', () => {
+    const three = question('Três?', FOUR.slice(0, 3));
+    const six = question('Seis?', [...FOUR, [' ', 'cinco'], [' ', 'seis']]);
+    expect(messages(`# T\n\n${three}\n${six}`)).toEqual([
+      'Questão 1 (linha 6): encontrei 3 alternativas, esperado 4 ou 5.',
+      'Questão 2 (linha 13): encontrei 6 alternativas, esperado 4 ou 5.',
     ]);
   });
 

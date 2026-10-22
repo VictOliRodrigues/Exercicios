@@ -1,0 +1,1 @@
+ALTER TABLE `questions` ADD `option_count` tinyint DEFAULT 4 NOT NULL;

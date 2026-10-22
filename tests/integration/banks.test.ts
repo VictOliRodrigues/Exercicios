@@ -102,7 +102,7 @@ describe('importação', () => {
     expect(res.status).toBe(422);
     expect(res.text).toContain('o arquivo tem 3 problemas');
     expect(res.text).toContain(
-      '<strong>Questão 1 · linha 6</strong> Encontrei 3 alternativas, esperado 4.',
+      '<strong>Questão 1 · linha 6</strong> Encontrei 3 alternativas, esperado 4 ou 5.',
     );
     expect(res.text).toContain('<strong>Questão 2 · linha 10</strong> Enunciado vazio.');
     expect(res.text).toContain(

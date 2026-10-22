@@ -857,3 +857,53 @@ describe('excluir relatório', () => {
     expect((await attemptRow(attemptId)).status).toBe('finished');
   });
 });
+
+describe('5 alternativas', () => {
+  // Uma questão de 5 alternativas e uma de 4; nas duas, a correta é a "b".
+  const MIXED =
+    '# Misto\n\n## Questão 1\nCinco?\n\n- [ ] a\n- [x] b\n- [ ] c\n- [ ] d\n- [ ] e\n\n' +
+    '## Questão 2\nQuatro?\n\n- [ ] a\n- [x] b\n- [ ] c\n- [ ] d\n';
+
+  it('a questão de 5 vai até a letra E; a de 4 recusa a E', async () => {
+    const { agent: ana } = await loggedUser('Ana Souza', 'ana@exemplo.com');
+    const bankId = await importBank(ana, MIXED);
+    const stored = await ctx.db
+      .select({ optionCount: questions.optionCount })
+      .from(questions)
+      .where(eq(questions.bankId, bankId))
+      .orderBy(asc(questions.position));
+    expect(stored.map((row) => row.optionCount)).toEqual([5, 4]);
+
+    const attemptId = await startAttempt(ana, bankId, { embaralhar: false });
+    expect((await placement(attemptId)).map((row) => row.optionOrder.join())).toEqual([
+      '0,1,2,3,4',
+      '0,1,2,3',
+    ]);
+    const html = (await ana.get(`/simulados/${attemptId}`)).text;
+    const letters = (number: number) => {
+      const article = new RegExp(`id="questao-${number}"[\\s\\S]*?</article>`).exec(html)![0];
+      return [...article.matchAll(/<span class="option-letter">(\w)<\/span>/g)].map((m) => m[1]);
+    };
+    expect(letters(1)).toEqual(['A', 'B', 'C', 'D', 'E']);
+    expect(letters(2)).toEqual(['A', 'B', 'C', 'D']);
+
+    expect((await putAnswer(ana, attemptId, 1, 4)).body).toEqual({ respondidas: 1 });
+    expect((await putAnswer(ana, attemptId, 1, 5)).status).toBe(400);
+    expect((await putAnswer(ana, attemptId, 2, 4)).status).toBe(400);
+    expect((await placement(attemptId)).map((row) => row.selectedOption)).toEqual([4, null]);
+
+    // Pelo formulário, a E da questão de 4 é ignorada: ela fica em branco.
+    await examPost(ana, attemptId, 'finalizar', { q2: '4', confirmar: '1' });
+    expect(await attemptRow(attemptId)).toMatchObject({
+      status: 'finished',
+      correctCount: 0,
+      blankCount: 1,
+    });
+    const report = (await ana.get(`/simulados/${attemptId}/relatorio`)).text;
+    const item = (number: number) =>
+      new RegExp(`id="questao-${number}"[\\s\\S]*?</li>`).exec(report)![0];
+    expect(item(1)).toContain('Sua resposta:</strong> E) e');
+    expect(item(1)).toContain('Correta:</strong> B) b');
+    expect(item(2)).toContain('Em branco');
+  });
+});

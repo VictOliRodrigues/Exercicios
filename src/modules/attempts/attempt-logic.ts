@@ -4,7 +4,6 @@ import { randomInt } from 'node:crypto';
 // questões em branco, correção e nota (seções 5.8 a 5.12 do plano).
 
 export const PAGE_SIZE = 10;
-export const OPTION_COUNT = 4;
 /** Tolerância para a rede: resposta que chega até 5 s depois do prazo ainda é aceita. */
 export const DEADLINE_GRACE_MS = 5_000;
 
@@ -30,28 +29,36 @@ export interface LaidOutQuestion {
   optionOrder: number[];
 }
 
+export interface QuestionToLayOut {
+  id: string;
+  /** Quantas alternativas a questão tem (4 ou 5). */
+  optionCount: number;
+}
+
 /**
  * Monta uma tentativa nova: sorteia `count` questões (todas, se não informado), numera de 1 a N e
  * distribui em páginas de 10. Embaralhando, a ordem das questões e das alternativas muda; sem
  * embaralhar, as sorteadas ficam na ordem recebida e as alternativas na ordem do arquivo.
  */
 export function layOutAttempt(
-  questionIds: readonly string[],
-  count = questionIds.length,
+  pool: readonly QuestionToLayOut[],
+  count = pool.length,
   shuffled = true,
   random = randomInt,
 ): LaidOutQuestion[] {
-  const drawn = shuffle(questionIds, random).slice(0, count);
+  const drawn = shuffle(pool, random).slice(0, count);
   const kept = new Set(drawn);
-  const chosen = shuffled ? drawn : questionIds.filter((id) => kept.has(id));
-  const original = Array.from({ length: OPTION_COUNT }, (_, i) => i);
-  return chosen.map((questionId, index) => ({
-    questionId,
-    number: index + 1,
-    page: pageOf(index),
-    sort: index + 1,
-    optionOrder: shuffled ? shuffle(original, random) : original,
-  }));
+  const chosen = shuffled ? drawn : pool.filter((question) => kept.has(question));
+  return chosen.map((question, index) => {
+    const original = Array.from({ length: question.optionCount }, (_, i) => i);
+    return {
+      questionId: question.id,
+      number: index + 1,
+      page: pageOf(index),
+      sort: index + 1,
+      optionOrder: shuffled ? shuffle(original, random) : original,
+    };
+  });
 }
 
 export interface PlacedQuestion {

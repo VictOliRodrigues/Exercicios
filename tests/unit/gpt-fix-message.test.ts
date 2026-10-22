@@ -26,14 +26,14 @@ describe('mensagem para o ChatGPT', () => {
       [
         'O arquivo .md que você gerou não pôde ser importado no sistema de simulados. Problemas encontrados:',
         '',
-        '1. Questão 1 ("Qual é a função do método map em um…"): tem 3 alternativas; precisa ter exatamente 4.',
+        '1. Questão 1 ("Qual é a função do método map em um…"): tem 3 alternativas; precisa ter 4 ou 5.',
         '2. Questão 2 ("Sobre o protocolo HTTP:"): nenhuma alternativa marcada como correta; marque exatamente uma com - [x].',
         '3. Questão 2 ("Sobre o protocolo HTTP:"): a alternativa "Todas as anteriores" depende da ordem, mas o sistema embaralha as alternativas; troque por outra.',
         '',
         'Corrija apenas esses problemas, sem alterar as outras questões, e me envie novamente o arquivo .md COMPLETO, com todas as questões, seguindo as mesmas regras de formato:',
         '- # Título na primeira linha;',
         '- cada questão começa com ## Questão N;',
-        '- enunciado, linha em branco e 4 alternativas no formato - [ ] texto, com a correta como - [x] texto;',
+        '- enunciado, linha em branco e 4 ou 5 alternativas no formato - [ ] texto, com a correta como - [x] texto;',
         '- nada de HTML, imagens ou texto depois das alternativas.',
       ].join('\n'),
     );

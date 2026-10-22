@@ -4,9 +4,10 @@ import type { AppDeps } from '../../app.js';
 import { formatList } from '../../http/format.js';
 import { isUuid } from '../../http/forms.js';
 import { flash, renderNotFound, userOnly } from '../../http/session.js';
+import { MAX_OPTIONS } from '../../markdown/parse-questions.js';
 import { findBankAccess, loadPanel } from '../banks/banks.service.js';
 import { listGroupsOfUser } from '../groups/groups.service.js';
-import { elapsedSeconds, letterLabel, OPTION_COUNT } from './attempt-logic.js';
+import { elapsedSeconds, letterLabel } from './attempt-logic.js';
 import {
   attemptTitle,
   deleteReport,
@@ -101,7 +102,7 @@ function answersFromForm(body: Record<string, unknown> | undefined): AnswerInput
     const match = /^q(\d{1,6})$/.exec(key);
     if (!match || typeof value !== 'string' || !/^\d$/.test(value)) continue;
     const letter = Number(value);
-    if (letter < OPTION_COUNT) answers.push({ number: Number(match[1]), letter });
+    if (letter < MAX_OPTIONS) answers.push({ number: Number(match[1]), letter });
   }
   return answers;
 }
@@ -293,18 +294,17 @@ export function attemptRoutes({ db, crypto }: AppDeps): Router {
     const number = positiveInt(req.params.numero);
     const letter: unknown = req.body?.alternativa;
     const valid =
-      typeof letter === 'number' &&
-      Number.isInteger(letter) &&
-      letter >= 0 &&
-      letter < OPTION_COUNT;
+      typeof letter === 'number' && Number.isInteger(letter) && letter >= 0 && letter < MAX_OPTIONS;
     if (!number || number > attempt.totalQuestions || !valid) {
       return res.status(400).json({ erro: 'Resposta inválida.' });
     }
-    const { accepted, answered } = await saveAnswers(db, attempt.id, [{ number, letter }]);
+    const { accepted, answered, ignored } = await saveAnswers(db, attempt.id, [{ number, letter }]);
     if (!accepted) {
       await settleIfExpired(db, crypto, attempt);
       return res.status(409).json({ finalizado: true, relatorio: reportPath(attempt) });
     }
+    // A letra E numa questão de 4 alternativas.
+    if (ignored) return res.status(400).json({ erro: 'Resposta inválida.' });
     res.json({ respondidas: answered });
   });
 

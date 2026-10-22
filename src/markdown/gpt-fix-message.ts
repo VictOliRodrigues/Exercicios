@@ -3,7 +3,7 @@ import type { ImportIssue } from './parse-questions.js';
 const FORMAT_RULES = [
   '- # Título na primeira linha;',
   '- cada questão começa com ## Questão N;',
-  '- enunciado, linha em branco e 4 alternativas no formato - [ ] texto, com a correta como - [x] texto;',
+  '- enunciado, linha em branco e 4 ou 5 alternativas no formato - [ ] texto, com a correta como - [x] texto;',
   '- nada de HTML, imagens ou texto depois das alternativas.',
 ];
 

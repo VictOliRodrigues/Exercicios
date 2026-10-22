@@ -1,7 +1,10 @@
 import type { Heading, List, ListItem, Nodes, PhrasingContent, RootContent } from 'mdast';
 import { parseMarkdown, renderInline, renderNodes } from './render.js';
 
-export const OPTIONS_PER_QUESTION = 4;
+/** Cada questão tem 4 ou 5 alternativas (A–D ou A–E); o arquivo pode misturar as duas. */
+export const MIN_OPTIONS = 4;
+export const MAX_OPTIONS = 5;
+const OPTIONS_LABEL = `${MIN_OPTIONS} ou ${MAX_OPTIONS}`;
 const TITLE_MAX_LENGTH = 200;
 const EXCERPT_LENGTH = 40;
 
@@ -11,7 +14,7 @@ export interface ParsedQuestion {
   sourceLine: number | null;
   statementHtml: string;
   optionsHtml: string[];
-  /** Índice da alternativa correta (0..3), na ordem do arquivo. */
+  /** Índice da alternativa correta (0..3, ou 0..4 com 5 alternativas), na ordem do arquivo. */
   correct: number;
 }
 
@@ -34,7 +37,7 @@ export interface ParseResult {
   warnings: string[];
 }
 
-/** "Questão 3 (linha 27): encontrei 3 alternativas, esperado 4." */
+/** "Questão 3 (linha 27): encontrei 3 alternativas, esperado 4 ou 5." */
 export function describeIssue(issue: ImportIssue): string {
   if (issue.question === null) return issue.detail;
   const where = issue.line === null ? '' : ` (linha ${issue.line})`;
@@ -219,13 +222,13 @@ function parseQuestion(
     issue(
       headingLine,
       'nenhuma alternativa encontrada (as alternativas são uma lista no formato - [ ] texto).',
-      `não tem alternativas no formato - [ ] texto; escreva exatamente ${OPTIONS_PER_QUESTION}, com a correta marcada como - [x].`,
+      `não tem alternativas no formato - [ ] texto; escreva ${OPTIONS_LABEL}, com a correta marcada como - [x].`,
     );
-  } else if (items.length !== OPTIONS_PER_QUESTION) {
+  } else if (items.length < MIN_OPTIONS || items.length > MAX_OPTIONS) {
     issue(
       listLine,
-      `encontrei ${items.length} alternativas, esperado ${OPTIONS_PER_QUESTION}.`,
-      `tem ${items.length} alternativas; precisa ter exatamente ${OPTIONS_PER_QUESTION}.`,
+      `encontrei ${items.length} alternativas, esperado ${OPTIONS_LABEL}.`,
+      `tem ${items.length} alternativas; precisa ter ${OPTIONS_LABEL}.`,
     );
   }
 

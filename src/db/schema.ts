@@ -143,6 +143,8 @@ export const questions = mysqlTable(
       .notNull()
       .references(() => questionBanks.id),
     position: int('position').notNull(),
+    /** Quantas alternativas a questão tem (4 ou 5): a prova é montada sem decifrar o conteúdo. */
+    optionCount: tinyint('option_count').notNull().default(4),
     payloadEnc: mediumtext('payload_enc').notNull(),
   },
   (table) => [index('questions_bank_idx').on(table.bankId, table.position)],

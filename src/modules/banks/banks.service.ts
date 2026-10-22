@@ -105,6 +105,7 @@ export async function importBank(
           id,
           bankId,
           position: question.position,
+          optionCount: question.optionsHtml.length,
           payloadEnc: crypto.encryptField(JSON.stringify(payload), 'questions', 'payload', id),
         };
       });

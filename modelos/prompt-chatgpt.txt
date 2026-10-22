@@ -11,8 +11,8 @@ ESTRUTURA DO ARQUIVO
 4. Depois do enunciado, deixe uma linha em branco e escreva as alternativas como lista de tarefas:
    - [ ] alternativa errada
    - [x] alternativa correta
-5. Cada questão tem exatamente 4 alternativas, e exatamente 1 delas marcada com [x].
-6. Não coloque letras nem números no início das alternativas. O sistema coloca A, B, C e D sozinho.
+5. Cada questão tem 4 alternativas (ou 5, se eu pedir 5), e exatamente 1 delas marcada com [x].
+6. Não coloque letras nem números no início das alternativas. O sistema coloca as letras (A, B, C...) sozinho.
 7. O sistema embaralha as alternativas. Por isso, nenhuma alternativa pode depender da ordem ou da letra: nada de "todas as anteriores", "nenhuma das anteriores" ou "alternativas A e B".
 8. Se o enunciado tiver uma lista comum, escreva uma frase entre ela e as alternativas (por exemplo: "Está correto o que se afirma em:"). Sem essa frase, as duas listas se juntam.
 9. Não escreva nada depois das alternativas: nada de gabarito, explicação ou comentário.
@@ -23,7 +23,7 @@ EXEMPLO DO FORMATO
 # Exemplo de simulado
 
 ## Questão 1
-Quantas alternativas cada questão deve ter?
+Quantas alternativas cada questão tem, se eu não pedir outra quantidade?
 
 - [ ] 3
 - [x] 4

@@ -15,6 +15,8 @@ import {
 import { formatClock, formatDuration, formatPercent, formatScore } from '../../src/http/format.js';
 
 const ids = (count: number) => Array.from({ length: count }, (_, i) => `q${i + 1}`);
+/** Questões q1..qN para montar a prova, todas com `optionCount` alternativas. */
+const pool = (count: number, optionCount = 4) => ids(count).map((id) => ({ id, optionCount }));
 
 /** Tamanho de cada página, na ordem: [10, 8, 7]. */
 function pageSizes(placement: Map<number, { page: number }>) {
@@ -41,7 +43,7 @@ describe('embaralhamento e montagem da tentativa', () => {
   });
 
   it('25 questões geram 3 páginas (10/10/5), numeradas de 1 a 25', () => {
-    const laidOut = layOutAttempt(ids(25));
+    const laidOut = layOutAttempt(pool(25));
     expect(laidOut.map((q) => q.number)).toEqual(Array.from({ length: 25 }, (_, i) => i + 1));
     expect(laidOut.map((q) => q.sort)).toEqual(laidOut.map((q) => q.number));
     expect(pageSizes(new Map(laidOut.map((q) => [q.number, q])))).toEqual([10, 10, 5]);
@@ -50,7 +52,7 @@ describe('embaralhamento e montagem da tentativa', () => {
   });
 
   it('sorteia um número menor de questões, sem repetir', () => {
-    const laidOut = layOutAttempt(ids(25), 7);
+    const laidOut = layOutAttempt(pool(25), 7);
     expect(laidOut).toHaveLength(7);
     expect(new Set(laidOut.map((q) => q.questionId)).size).toBe(7);
     expect(laidOut.every((q) => q.page === 1)).toBe(true);
@@ -60,7 +62,7 @@ describe('embaralhamento e montagem da tentativa', () => {
     const orders = new Set<string>();
     const options = new Set<string>();
     for (let i = 0; i < 20; i++) {
-      const laidOut = layOutAttempt(ids(25));
+      const laidOut = layOutAttempt(pool(25));
       orders.add(laidOut.map((q) => q.questionId).join());
       options.add(laidOut[0]!.optionOrder.join());
     }
@@ -69,19 +71,37 @@ describe('embaralhamento e montagem da tentativa', () => {
   });
 
   it('sem embaralhar: questões na ordem recebida e alternativas na ordem do arquivo', () => {
-    const all = layOutAttempt(ids(25), 25, false);
+    const all = layOutAttempt(pool(25), 25, false);
     expect(all.map((q) => q.questionId)).toEqual(ids(25));
     expect(all.every((q) => q.optionOrder.join() === '0,1,2,3')).toBe(true);
 
     // Sorteando menos, quais entram varia, mas elas continuam na ordem do arquivo.
     const drawn = new Set<string>();
     for (let i = 0; i < 20; i++) {
-      const sampled = layOutAttempt(ids(25), 7, false).map((q) => q.questionId);
+      const sampled = layOutAttempt(pool(25), 7, false).map((q) => q.questionId);
       expect(sampled).toHaveLength(7);
       expect(sampled).toEqual([...sampled].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1))));
       drawn.add(sampled.join());
     }
     expect(drawn.size).toBeGreaterThan(1);
+  });
+
+  it('cada questão embaralha as próprias alternativas: 4 ou 5', () => {
+    const mixed = [...pool(10), ...pool(10, 5).map((q) => ({ ...q, id: `${q.id}e` }))];
+    const fives = new Set<string>();
+    for (let i = 0; i < 20; i++) {
+      for (const q of layOutAttempt(mixed)) {
+        const expected = q.questionId.endsWith('e') ? [0, 1, 2, 3, 4] : [0, 1, 2, 3];
+        expect([...q.optionOrder].sort()).toEqual(expected);
+        if (expected.length === 5) fives.add(q.optionOrder.join());
+      }
+    }
+    expect(fives.size).toBeGreaterThan(1);
+    const inOrder = layOutAttempt(mixed, 20, false);
+    expect(inOrder.map((q) => q.optionOrder.length)).toEqual([
+      ...Array(10).fill(4),
+      ...Array(10).fill(5),
+    ]);
   });
 
   it('usa o gerador recebido (ordem previsível nos testes)', () => {
@@ -113,6 +133,7 @@ describe('alternativas embaralhadas', () => {
     const order = [2, 0, 3, 1];
     expect(letterLabel(letterOf(order, 2))).toBe('A');
     expect(letterLabel(letterOf(order, 1))).toBe('D');
+    expect(letterLabel(letterOf([3, 4, 0, 2, 1], 1))).toBe('E');
     expect(originalOption(order, 4)).toBeNull();
     expect(originalOption(order, 1.5)).toBeNull();
   });
